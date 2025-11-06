@@ -1,33 +1,26 @@
-import type React from "react"
-import "@/app/globals.css"
+import type { Metadata } from "next"
 import { Inter } from "next/font/google"
-import { ThemeProvider } from "@/components/theme-provider"
+import "./globals.css"
 import { Toaster } from "@/components/toaster"
+import 'katex/dist/katex.min.css'
 
 const inter = Inter({ subsets: ["latin"] })
 
-export const metadata = {
-  title: "SAT Mirror - Digital SAT Practice",
-  description: "Practice for the digital SAT with a realistic simulation of the College Board Bluebook app",
-    generator: 'v0.app'
+export const metadata: Metadata = {
+  title: "SAT Practice",
+  description: "Digital SAT practice test application",
 }
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode
-}) {
+}>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-        <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-      </head>
+    <html lang="en">
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          {children}
-          <Toaster />
-        </ThemeProvider>
+        {children}
+        <Toaster />
       </body>
     </html>
   )

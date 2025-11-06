@@ -4,7 +4,6 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { DashboardHeader } from "@/components/dashboard-header"
 import { BookOpen, Clock, Calculator } from "lucide-react"
 
 export default function NewTestPage() {
@@ -14,17 +13,21 @@ export default function NewTestPage() {
   const startTest = () => {
     setIsStarting(true)
 
-    // No need to store CSV file paths anymore since we're using TypeScript data files
-
     setTimeout(() => {
-      // Navigate to the intro page of the first module
       router.push("/test/module/1/intro")
     }, 1000)
   }
 
   return (
     <div className="flex min-h-screen flex-col">
-      <DashboardHeader />
+      <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-16 items-center justify-between">
+          <div className="flex items-center gap-2 font-bold">
+            <BookOpen className="h-5 w-5" />
+            <span>SAT Practice</span>
+          </div>
+        </div>
+      </header>
       <main className="flex-1 container py-6">
         <div className="mb-6">
           <h1 className="text-3xl font-bold tracking-tight">Start New Test</h1>

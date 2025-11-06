@@ -213,6 +213,19 @@ export default function TestModulePage() {
 
   const isFreeResponse = isMathModule && currentQuestionData.questionType === "free-response"
 
+  // Build options array - handle both old and new data formats
+  const options = currentQuestionData.options
+    ? currentQuestionData.options.map((text, index) => ({
+        key: String.fromCharCode(65 + index), // A, B, C, D
+        text: text,
+      }))
+    : [
+        { key: "A", text: (currentQuestionData as any).answerA },
+        { key: "B", text: (currentQuestionData as any).answerB },
+        { key: "C", text: (currentQuestionData as any).answerC },
+        { key: "D", text: (currentQuestionData as any).answerD },
+      ].filter((opt) => opt.text !== undefined && opt.text !== "")
+
   // Format time as MM:SS
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -383,7 +396,7 @@ export default function TestModulePage() {
                       (content, index) =>
                         content && (
                           <div key={index}>
-                            <RenderedContent content={String(content)} />
+                            <RenderedContent content={String(content)} testNumber={1} />
                             {index < currentQuestionData.contentColumns.length - 1 && <hr className="my-4" />}
                           </div>
                         ),
@@ -399,24 +412,15 @@ export default function TestModulePage() {
                     onValueChange={updateAnswer}
                     className="space-y-4 mt-6"
                   >
-                    {(currentQuestionData.options || []).map((option, index) => (
-                      <div
-                        key={index}
-                        className={`flex items-start space-x-3 rounded-md border p-4 transition-colors ${
-                          currentQuestionData.userAnswer === String.fromCharCode(65 + index)
-                            ? "bg-primary/5 border-primary/50"
-                            : ""
-                        }`}
-                        onClick={() => updateAnswer(String.fromCharCode(65 + index))}
-                      >
-                        <RadioGroupItem
-                          value={String.fromCharCode(65 + index)}
-                          id={`option-${index}`}
-                          className="mt-1"
-                        />
-                        <Label htmlFor={`option-${index}`} className="flex-1 cursor-pointer text-base font-normal">
-                          <span className="font-medium mr-2">{String.fromCharCode(65 + index)}.</span>
-                          {option}
+                    {options.map((opt) => (
+                      <div key={opt.key} className="flex items-start space-x-3 rounded-md border p-4"
+                           onClick={() => updateAnswer(opt.key)}>
+                        <RadioGroupItem value={opt.key} id={`option-${opt.key}`} className="mt-1" />
+                        <Label htmlFor={`option-${opt.key}`} className="flex-1 cursor-pointer text-base font-normal">
+                          <span className="font-medium mr-2">{opt.key}.</span>
+                          <span className="flex-1">
+                            <RenderedContent content={String(opt.text)} testNumber={1} />
+                          </span>
                         </Label>
                       </div>
                     ))}

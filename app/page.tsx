@@ -35,11 +35,124 @@ export default function NewTestPage() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
-          {/* ...existing code... */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary">
+                  <BookOpen className="h-4 w-4" />
+                </div>
+                Module 1
+              </CardTitle>
+              <CardDescription>Reading & Writing</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm">
+                <p className="flex items-center gap-2 mb-1">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span>32 minutes</span>
+                </p>
+                <p>27 multiple choice questions</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary">
+                  <BookOpen className="h-4 w-4" />
+                </div>
+                Module 2
+              </CardTitle>
+              <CardDescription>Reading & Writing</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm">
+                <p className="flex items-center gap-2 mb-1">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span>32 minutes</span>
+                </p>
+                <p>27 multiple choice questions</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary">
+                  <Calculator className="h-4 w-4" />
+                </div>
+                Module 3
+              </CardTitle>
+              <CardDescription>Mathematics</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm">
+                <p className="flex items-center gap-2 mb-1">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span>35 minutes</span>
+                </p>
+                <p>22 questions (MCQ & free-response)</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary">
+                  <Calculator className="h-4 w-4" />
+                </div>
+                Module 4
+              </CardTitle>
+              <CardDescription>Mathematics</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm">
+                <p className="flex items-center gap-2 mb-1">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span>35 minutes</span>
+                </p>
+                <p>22 questions (MCQ & free-response)</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <Card className="mb-6">
-          {/* ...existing code... */}
+          <CardHeader>
+            <CardTitle>Test Information</CardTitle>
+            <CardDescription>What to expect during your practice test</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <h3 className="font-medium mb-2">Test Structure</h3>
+              <p className="text-sm text-muted-foreground">
+                The digital SAT consists of four modules: two Reading & Writing and two Math modules. All modules are
+                presented with consistent difficulty.
+              </p>
+            </div>
+            <div>
+              <h3 className="font-medium mb-2">Timing</h3>
+              <p className="text-sm text-muted-foreground">
+                The total test time is 134 minutes (2 hours and 14 minutes). You'll have 32 minutes for each Reading &
+                Writing module and 35 minutes for each Math module.
+              </p>
+            </div>
+            <div>
+              <h3 className="font-medium mb-2">Scoring</h3>
+              <p className="text-sm text-muted-foreground">
+                Your score will range from 400-1600, with each section (Reading & Writing and Math) scored from 200-800.
+                Your performance on both modules in each section contributes to your section score.
+              </p>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button onClick={startTest} disabled={isStarting} size="lg" className="w-full md:w-auto">
+              {isStarting ? "Preparing test..." : "Begin Full Practice Test"}
+            </Button>
+          </CardFooter>
         </Card>
       </main>
     </div>

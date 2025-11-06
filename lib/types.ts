@@ -26,13 +26,13 @@ export interface TestQuestion {
   moduleId: string
   questionNumber: number
   questionText: string
-  contentColumns?: string[]
   questionType: "multiple-choice" | "free-response"
   options?: string[]
   correctAnswer: string
   userAnswer?: string
-  isCorrect?: boolean
-  difficulty: "easy" | "medium" | "hard"
+  flagged?: boolean
+  difficulty?: "easy" | "medium" | "hard"
+  contentColumns?: (string | null | undefined)[] // Add this line
 }
 
 // Scoring types
