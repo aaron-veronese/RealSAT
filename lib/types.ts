@@ -35,17 +35,6 @@ export interface TestQuestion {
   difficulty: "easy" | "medium" | "hard"
 }
 
-// CSV data types
-export interface CSVQuestion {
-  question: string
-  answerA?: string
-  answerB?: string
-  answerC?: string
-  answerD?: string
-  correctAnswer: string
-  difficulty: "easy" | "medium" | "hard"
-}
-
 // Scoring types
 export interface SectionScore {
   rawScore: number

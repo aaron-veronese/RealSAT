@@ -17,26 +17,28 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 function convertToTestQuestion(csvQuestion: any, moduleId: string, questionNumber: number): TestQuestion {
-  const isMultipleChoice = typeof csvQuestion.correctAnswer === "string" && /^[A-D]$/.test(csvQuestion.correctAnswer)
-
-  // Extract all content columns (content, content2, content3, etc.)
-  const contentColumns: string[] = []
-  if (csvQuestion.content1) contentColumns.push(csvQuestion.content1)
-  if (csvQuestion.content2) contentColumns.push(csvQuestion.content2)
-  if (csvQuestion.content3) contentColumns.push(csvQuestion.content3)
-  if (csvQuestion.content4) contentColumns.push(csvQuestion.content4)
-  if (csvQuestion.content5) contentColumns.push(csvQuestion.content5)
+  const contentColumns = [
+    csvQuestion.content1,
+    csvQuestion.content2,
+    csvQuestion.content3,
+    csvQuestion.content4,
+    csvQuestion.content5,
+  ].filter((content) => content && content.trim() !== "")
 
   return {
     id: `q-${moduleId}-${questionNumber}`,
     moduleId,
     questionNumber,
-    questionText: csvQuestion.question || "",
+    questionText: csvQuestion.content1 || "",
     contentColumns: contentColumns.length > 0 ? contentColumns : undefined,
-    questionType: isMultipleChoice ? "multiple-choice" : "free-response",
-    options: isMultipleChoice
-      ? [csvQuestion.answerA || "", csvQuestion.answerB || "", csvQuestion.answerC || "", csvQuestion.answerD || ""]
-      : undefined,
+    questionType:
+      csvQuestion.answerA || csvQuestion.answerB || csvQuestion.answerC || csvQuestion.answerD
+        ? "multiple-choice"
+        : "free-response",
+    options:
+      csvQuestion.answerA || csvQuestion.answerB || csvQuestion.answerC || csvQuestion.answerD
+        ? [csvQuestion.answerA || "", csvQuestion.answerB || "", csvQuestion.answerC || "", csvQuestion.answerD || ""]
+        : undefined,
     correctAnswer: String(csvQuestion.correctAnswer),
     difficulty: csvQuestion.difficulty?.toLowerCase() || "medium",
   }
