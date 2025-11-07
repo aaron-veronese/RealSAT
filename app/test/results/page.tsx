@@ -5,7 +5,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { ArrowRight, Home } from "lucide-react"
+import { ArrowRight, Home, Gem } from "lucide-react"
 import { calculateTestScore } from "@/lib/scoring"
 import { RenderedContent } from "@/components/rendered-content"
 import type { Test, TestModule, TestScore } from "@/lib/types"
@@ -76,6 +76,7 @@ export default function TestResultsPage() {
   const [remainingVideos, setRemainingVideos] = useState(5)
   const [selectedFilters, setSelectedFilters] = useState<string[]>(['all'])
   const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set())
+  const [requestedVideos, setRequestedVideos] = useState<Map<string, 'pending' | 'available'>>(new Map())
 
   useEffect(() => {
     // Clear the test-in-progress flag when viewing results
@@ -284,10 +285,17 @@ export default function TestResultsPage() {
     setExpandedQuestions(newExpanded)
   }
 
-  const requestVideo = () => {
+  const requestVideo = (questionId: string) => {
+    if (requestedVideos.has(questionId)) return
+
     if (remainingVideos > 0) {
       setRemainingVideos(prev => prev - 1)
-      alert("Video explanation requested! (This is a demo)")
+      setRequestedVideos(prev => new Map(prev).set(questionId, 'pending'))
+
+      // Simulate video becoming available after 2 seconds
+      setTimeout(() => {
+        setRequestedVideos(prev => new Map(prev).set(questionId, 'available'))
+      }, 2000)
     } else {
       alert("No free videos remaining.")
     }
@@ -605,14 +613,44 @@ export default function TestResultsPage() {
                                 </div>
                               )}
                               <div className="flex justify-end">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={requestVideo}
-                                  disabled={remainingVideos === 0}
-                                >
-                                  Request Video Explanation ({remainingVideos}/5 free)
-                                </Button>
+                                {(() => {
+                                  const videoStatus = requestedVideos.get(question.id || index.toString())
+                                  if (videoStatus === 'available') {
+                                    return (
+                                      <div className="w-full">
+                                        <div className="bg-gray-100 p-4 rounded border">
+                                          <p className="text-sm font-medium mb-2">Video Explanation</p>
+                                          <div className="aspect-video bg-gray-200 rounded flex items-center justify-center">
+                                            <p className="text-gray-500">Video player would appear here</p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )
+                                  } else if (videoStatus === 'pending') {
+                                    return (
+                                      <Button variant="outline" size="sm" disabled>
+                                        Video explanation pending
+                                      </Button>
+                                    )
+                                  } else {
+                                    return (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => requestVideo(question.id || index.toString())}
+                                        disabled={remainingVideos === 0}
+                                      >
+                                        {remainingVideos === 0 ? (
+                                          <>
+                                            Request Video Explanation ( 20<Gem className="h-4 w-4 text-orange-500"/>)
+                                          </>
+                                        ) : (
+                                          `Request Video Explanation (${remainingVideos} Remaining)`
+                                        )}
+                                      </Button>
+                                    )
+                                  }
+                                })()}
                               </div>
                             </div>
                           </CardContent>
