@@ -80,7 +80,7 @@ export default function TestModulePage() {
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
       if (dragState.current.dragging) {
-        setCalcRect((r) => {
+        setCalcRect((r: { top: number; left: number; width: number; height: number }) => {
           const newLeft = e.clientX - dragState.current.offsetX
           const newTop = e.clientY - dragState.current.offsetY
           return { ...r, left: Math.max(8, newLeft), top: Math.max(40, newTop) }
@@ -88,13 +88,50 @@ export default function TestModulePage() {
       } else if (resizeState.current.resizing) {
         const dx = e.clientX - resizeState.current.startX
         const dy = e.clientY - resizeState.current.startY
-        setCalcRect({
-          top: Math.max(40, resizeState.current.startYRectTop),
-          left: Math.max(10, resizeState.current.startXRectLeft),
-          width: Math.max(320, resizeState.current.startW + dx),
-          height: Math.max(200, resizeState.current.startH + dy),
+        const dir = resizeState.current.direction
+
+        setCalcRect((r: { top: number; left: number; width: number; height: number }) => {
+          let { top, left, width, height } = r
+          switch (dir) {
+            case "n":
+              height = Math.max(200, resizeState.current.startH - dy)
+              top = resizeState.current.startYRectTop + dy
+              break
+            case "s":
+              height = Math.max(200, resizeState.current.startH + dy)
+              break
+            case "w":
+              width = Math.max(320, resizeState.current.startW - dx)
+              left = resizeState.current.startXRectLeft + dx
+              break
+            case "e":
+              width = Math.max(320, resizeState.current.startW + dx)
+              break
+            case "nw":
+              width = Math.max(320, resizeState.current.startW - dx)
+              height = Math.max(200, resizeState.current.startH - dy)
+              left = resizeState.current.startXRectLeft + dx
+              top = resizeState.current.startYRectTop + dy
+              break
+            case "ne":
+              width = Math.max(320, resizeState.current.startW + dx)
+              height = Math.max(200, resizeState.current.startH - dy)
+              top = resizeState.current.startYRectTop + dy
+              break
+            case "sw":
+              width = Math.max(320, resizeState.current.startW - dx)
+              height = Math.max(200, resizeState.current.startH + dy)
+              left = resizeState.current.startXRectLeft + dx
+              break
+            case "se":
+              width = Math.max(320, resizeState.current.startW + dx)
+              height = Math.max(200, resizeState.current.startH + dy)
+              break
+          }
+          return { top, left, width, height }
         })
       }
+
     }
 
     const onUp = () => {
@@ -120,19 +157,52 @@ export default function TestModulePage() {
   const isMathModule = moduleId > 2
   const isLastQuestion = currentQuestion === totalQuestions
 
+  // Count how many questions have been answered (reads sessionStorage as a fallback
+  // because the review page may update answers there)
+  const [answeredCount, setAnsweredCount] = useState<number>(0)
+
+  useEffect(() => {
+    const computeAnswered = () => {
+      let qs = questions
+      if ((!qs || qs.length === 0) && typeof window !== "undefined") {
+        const saved = sessionStorage.getItem(`module-${moduleId}-questions`)
+        if (saved) {
+          try {
+            qs = JSON.parse(saved)
+          } catch {
+            qs = []
+          }
+        }
+      }
+
+      const count = (qs || []).filter(
+        (q: any) =>
+          q &&
+          q.userAnswer !== undefined &&
+          q.userAnswer !== null &&
+          String(q.userAnswer).trim() !== ""
+      ).length
+
+      setAnsweredCount(count)
+    }
+
+    computeAnswered()
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === `module-${moduleId}-questions`) computeAnswered()
+    }
+    window.addEventListener("storage", onStorage)
+    return () => window.removeEventListener("storage", onStorage)
+  }, [questions, moduleId])
+
+  const percentComplete = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0
+
   // Create Desmos calculator with full-featured options
   const createCalculator = () => {
     if (!calculatorContainerRef.current || !window.Desmos) return
 
-    // destroy existing instance if present
+    // Destroy existing instance if present
     if (calculatorRef.current) {
-      try {
-        // persist state before destroy
-        const state = calculatorRef.current?.getState?.()
-        if (state) sessionStorage.setItem("desmos-state", JSON.stringify(state))
-      } catch {
-        /* ignore */
-      }
       try {
         calculatorRef.current.destroy()
       } catch {
@@ -143,43 +213,17 @@ export default function TestModulePage() {
 
     // Full-featured config — enables regressions, tables, sliders, images, text, folders, etc.
     calculatorRef.current = window.Desmos.GraphingCalculator(calculatorContainerRef.current, {
-      // UI
-      keypad: true,
-      expressions: true,
-      expressionsCollapsed: false,
-      expressionsTopbar: true, // + menu
-      settingsMenu: true, // gear icon
-      zoomButtons: true,
-      lockViewport: false,
-      autosize: true,
-      border: false,
-      graphpaper: true,
-      showGrid: true,
-      showXAxis: true,
-      showYAxis: true,
-      showResetButtonOnGraphpaper: true,
-      // Advanced features
-      projectorMode: false,
-      degreeMode: false,
-      pasteGraphLink: true,
-      showHamburger: true,
-      showLogo: true,
-      pointsOfInterest: true,
-      trace: true,
-      showUndoRedo: true,
-      autosave: true,
-      invertedColors: false,
-      language: "en-US",
-      // Unlock the features often disabled in "exam" mode:
-      restrictedFunctions: false,
-      enableSliders: true,
-      enableTables: true,
-      enableImages: true,
-      enableText: true,
-      enableNotes: true,
-      enableFolders: true,
-      enableRegression: true, // <-- enables regression tools
+      expressions: true,      // Show expressions panel (enables tables, regressions, etc.)
+      keypad: true,           // Show keypad
+      settingsMenu: true,     // Show settings menu
+      zoomButtons: true,      // Show zoom buttons
+      lockViewport: false,    // Allow viewport changes
+      border: false,          // No border
+      expressionsTopbar: true, // Show top bar in expressions
+      expressionsCollapsed: false, // Keep expressions panel open
+      autosize: true,         // Auto-resize to container
     })
+
 
     // Restore saved state if any
     try {
@@ -204,7 +248,7 @@ export default function TestModulePage() {
 
     // If calculator not shown, we still only want script loaded (so toggling is instant)
     const ensureScriptLoaded = () => {
-      const existingScript = document.querySelector('script[src^="https://www.desmos.com/api/v1.7/calculator.js"]') as HTMLScriptElement | null
+      const existingScript = document.querySelector('script[src^="https://www.desmos.com/api/v1.11/calculator.js"]') as HTMLScriptElement | null
 
       if (window.Desmos) {
         return Promise.resolve()
@@ -220,7 +264,7 @@ export default function TestModulePage() {
       } else {
         return new Promise<void>((resolve) => {
           const script = document.createElement("script")
-          script.src = "https://www.desmos.com/api/v1.7/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"
+          script.src = "https://www.desmos.com/api/v1.11/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"
           script.async = true
           script.onload = () => {
             resolve()
@@ -307,7 +351,9 @@ export default function TestModulePage() {
 
           // Log module generation info without revealing difficulty
           console.log(`Generating module ${moduleId} questions based on previous performance`)
-          console.log(`Using ${previousModuleQuestions.length} questions from module ${previousModuleId}`)
+          if (previousModuleQuestions) {
+            console.log(`Using ${previousModuleQuestions.length} questions from module ${previousModuleId}`)
+          }
         }
       }
 
@@ -594,9 +640,9 @@ export default function TestModulePage() {
             <span>
               Question {currentQuestion} of {totalQuestions}
             </span>
-            <span>{Math.round((currentQuestion / totalQuestions) * 100)}% complete</span>
+            <span>{percentComplete}% complete</span>
           </div>
-          <Progress value={(currentQuestion / totalQuestions) * 100} className="h-2 bg-gray-100 [&>div]:bg-blue-600" />
+          <Progress value={percentComplete} className="h-2 bg-gray-100 [&>div]:bg-blue-600" />
         </div>
       </header>
 
@@ -606,18 +652,20 @@ export default function TestModulePage() {
             <Card>
               <CardContent className="p-6">
                 <div className="space-y-4">
-                  {currentQuestionData.contentColumns && currentQuestionData.contentColumns.length > 0 ? (
-                    currentQuestionData.contentColumns.map(
-                      (content, index) =>
+                  {(currentQuestionData as any).contentColumns && (currentQuestionData as any).contentColumns.length > 0 ? (
+                    (currentQuestionData as any).contentColumns.map(
+                      (content: any, index: number) =>
                         content && (
                           <div key={index}>
                             <RenderedContent content={String(content)} testNumber={1} />
-                            {index < currentQuestionData.contentColumns.length - 1 && <hr className="my-4" />}
+                            {index < (currentQuestionData as any).contentColumns.length - 1 && <hr className="my-4" />}
                           </div>
                         ),
                     )
                   ) : (
-                    <p className="text-base leading-relaxed">{currentQuestionData.questionText}</p>
+                    <div className="whitespace-pre-wrap">
+                      {String((currentQuestionData as any).content1 || "").replace(/<br\s*\/?>/gi, "\n")}
+                    </div>
                   )}
                 </div>
 
@@ -753,17 +801,20 @@ export default function TestModulePage() {
 
               {/* Resize Handle */}
               <div
-                className="absolute bottom-0 right-0 w-5 h-5 cursor-se-resize"
                 onMouseDown={(e) => {
                   resizeState.current.resizing = true
+                  resizeState.current.direction = "se" // bottom-right resize
                   resizeState.current.startX = e.clientX
                   resizeState.current.startY = e.clientY
                   resizeState.current.startW = calcRect.width
                   resizeState.current.startH = calcRect.height
+                  // store top/left in state for safety (used by move handler above)
                   resizeState.current.startXRectLeft = calcRect.left
                   resizeState.current.startYRectTop = calcRect.top
-                  e.stopPropagation()
+                  e.preventDefault()
                 }}
+                className="absolute right-0 bottom-0 w-6 h-6 cursor-se-resize bg-gray-300 border border-gray-400"
+                style={{ zIndex: 70 }}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"

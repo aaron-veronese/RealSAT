@@ -17,16 +17,22 @@ export function RenderedContent({ content, testNumber = 1 }: RenderedContentProp
     <>
       {parts.map((part, index) => {
         if (part.type === "text") {
+          // Split by newline characters and render as separate lines
+          const lines = part.content.split(/\r?\n/)
           return (
-            <span key={index} className="text-base leading-relaxed">
-              {part.content}
+            <span key={index} className="text-base leading-relaxed whitespace-pre-line">
+              {lines.map((line, i) => (
+                <span key={i}>
+                  {renderWithBr(line)}
+                  {i < lines.length - 1 && <br />}
+                </span>
+              ))}
             </span>
           )
         }
 
         if (part.type === "latex") {
           const isBlock = part.content.includes("\\\\") || part.content.includes("\n")
-          
           return isBlock ? (
             <div key={index} className="my-4">
               <BlockMath math={part.content} />
@@ -43,7 +49,10 @@ export function RenderedContent({ content, testNumber = 1 }: RenderedContentProp
                 <thead>
                   <tr className="bg-gray-100">
                     {part.headers?.map((header, i) => (
-                      <th key={i} className="border border-gray-300 px-4 py-2 text-left font-semibold">
+                      <th
+                        key={i}
+                        className="border border-gray-300 px-4 py-2 text-left font-semibold"
+                      >
                         {header}
                       </th>
                     ))}
@@ -51,7 +60,7 @@ export function RenderedContent({ content, testNumber = 1 }: RenderedContentProp
                 </thead>
                 <tbody>
                   {part.rows?.map((row, i) => (
-                    <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                    <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                       {row.map((cell, j) => (
                         <td key={j} className="border border-gray-300 px-4 py-2">
                           {cell}
@@ -83,4 +92,18 @@ export function RenderedContent({ content, testNumber = 1 }: RenderedContentProp
       })}
     </>
   )
+}
+
+/**
+ * Helper: render <br/> tags inside text safely.
+ * This allows you to include <br/> literally in content strings.
+ */
+function renderWithBr(text: string) {
+  const segments = text.split(/<br\s*\/?>/i)
+  return segments.map((seg, i) => (
+    <span key={i}>
+      {seg}
+      {i < segments.length - 1 && <br />}
+    </span>
+  ))
 }

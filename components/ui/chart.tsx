@@ -78,13 +78,13 @@ const ChartTooltipContent = React.forwardRef<HTMLDivElement, ChartTooltipContent
 ChartTooltipContent.displayName = "ChartTooltipContent"
 
 interface ChartTooltipProps extends React.HTMLAttributes<HTMLDivElement> {
-  content: React.ReactNode
+  children: React.ReactNode
 }
 
-const ChartTooltip = React.forwardRef<HTMLDivElement, ChartTooltipProps>(({ className, content, ...props }, ref) => {
+const ChartTooltip = React.forwardRef<HTMLDivElement, ChartTooltipProps>(({ className, children, ...props }, ref) => {
   return (
     <div className={cn("pointer-events-none", className)} ref={ref} {...props}>
-      {content}
+      {children}
     </div>
   )
 })

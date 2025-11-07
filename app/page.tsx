@@ -13,6 +13,14 @@ export default function NewTestPage() {
   const startTest = () => {
     setIsStarting(true)
 
+    // Clear any previous test data from sessionStorage
+    for (let i = 1; i <= 4; i++) {
+      sessionStorage.removeItem(`module-${i}-questions`)
+      sessionStorage.removeItem(`module-${i}-timer-end`)
+      sessionStorage.removeItem(`module-${i}-completed`)
+    }
+    sessionStorage.removeItem("test-in-progress")
+
     setTimeout(() => {
       router.push("/test/module/1/intro")
     }, 1000)
@@ -150,7 +158,7 @@ export default function NewTestPage() {
           </CardContent>
           <CardFooter>
             <Button onClick={startTest} disabled={isStarting} size="lg" className="w-full md:w-auto">
-              {isStarting ? "Preparing test..." : "Begin Full Practice Test"}
+              {isStarting ? "Clearing previous data & preparing test..." : "Begin Full Practice Test"}
             </Button>
           </CardFooter>
         </Card>

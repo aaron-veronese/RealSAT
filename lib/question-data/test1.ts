@@ -21,7 +21,7 @@ export const test1Data = [
   {
     module: 1,
     content1:
-      'A number of recording artists ________ distinctions between Indigenous music and other musical styles. For example, Choctaw singer-songwriter Samantha Crain incorporated elements of Choctaw hymns into folk-pop on her single "When We Remain, " and Oji- Cree/Mi\'kmaq musician Anachnid combined Indigenous flute and powwow vocals with electronic music on her album Dreamweaver.',
+      'A number of recording artists ________ distinctions between Indigenous music and other musical styles. For example, Choctaw singer-songwriter Samantha Crain incorporated elements of Choctaw hymns into folk-pop on her single "When We Remain, " and Oji-Cree/Mikmaq musician Anachnid combined Indigenous flute and powwow vocals with electronic music on her album Dreamweaver.',
     content2: "Which choice completes the text with the most logical and precise word or phrase?",
     content3: "",
     content4: "",
@@ -61,7 +61,7 @@ export const test1Data = [
     content1:
       "The following text is adapted from the 1895 poem “Ojistoh” by Emily Pauline Johnson, a Kanienkahagen (Mohawk) writer also known as Tekahionwake.",
     content2:
-      "I am Ojistoh, I am she, the wife Of him whose name breathes bravery and life And courage to the tribe who calls him chief. I am Ojistoh, his white star, and he Is land, and lake, and sky—and soul to me.",
+      "I am Ojistoh, I am she, the wife\nOf him whose name breathes bravery and life\nAnd courage to the tribe who calls him chief.\nI am Ojistoh, his white star, and he\nIs land, and lake, and sky—and soul to me.",
     content3: "As used in the text, what does the word “breathes” most nearly mean?",
     content4: "",
     content5: "",
@@ -1301,8 +1301,8 @@ export const test1Data = [
   {
     module: 3,
     question: 10,
-    content1: "Triangle XYZ shown is a right triangle. Which of the following has the same value as $$sin X$$?",
-    content2: "",
+    content1: "@@89-3-10@@",
+    content2: "Triangle XYZ shown is a right triangle. Which of the following has the same value as $$sin X$$?",
     content3: "",
     content4: "",
     content5: "",
@@ -1422,14 +1422,14 @@ export const test1Data = [
     module: 3,
     question: 16,
     content1:
-      "The ratio 12 to $$x$$ is equivalent to the ratio 156 to $$y$$. Which expression represents $$y$$ in terms of $$x$$?",
+      "The ratio of 12 to $$x$$ is equivalent to the ratio of 156 to $$y$$. Which expression represents $$y$$ in terms of $$x$$?",
     content2: "",
     content3: "",
     content4: "",
     content5: "",
-    answerA: "$$1/13x$$",
+    answerA: "$$1/(13)x$$",
     answerB: "$$13x$$",
-    answerC: "$$1/12x$$",
+    answerC: "$$1/(12)x$$",
     answerD: "$$12x$$",
     correctAnswer: "B",
     testType: "Math",

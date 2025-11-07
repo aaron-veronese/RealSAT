@@ -94,7 +94,7 @@ export default function ModuleReviewPage() {
                   <div className="flex flex-col gap-2">
                     <span className="text-sm text-muted-foreground">Questions Answered</span>
                     <div className="flex items-center gap-2">
-                      <Progress value={(answeredCount / totalQuestions) * 100} className="h-2" />
+                      <Progress value={(answeredCount / totalQuestions) * 100} className="h-2 [&>div]:bg-blue-500" />
                       <span className="text-sm font-medium">
                         {answeredCount}/{totalQuestions}
                       </span>
@@ -114,7 +114,7 @@ export default function ModuleReviewPage() {
                     <div className="flex items-center gap-2">
                       <Progress
                         value={((totalQuestions - answeredCount) / totalQuestions) * 100}
-                        className="h-2 [&>div]:bg-red-500"
+                        className="h-2 [&>div]:bg-orange-400"
                       />
                       <span className="text-sm font-medium">
                         {totalQuestions - answeredCount}/{totalQuestions}
@@ -141,8 +141,8 @@ export default function ModuleReviewPage() {
                           isFlagged
                             ? "border-yellow-500 bg-yellow-50"
                             : isAnswered
-                              ? "border-green-500 bg-green-50"
-                              : "border-red-500 bg-red-50"
+                              ? "border-blue-500 bg-blue-50"
+                              : "border-orange-400 bg-orange-50"
                         }`}
                         onClick={() => handleGoToQuestion(questionNumber)}
                       >
@@ -151,9 +151,9 @@ export default function ModuleReviewPage() {
                           <Flag className="absolute -top-2 -right-2 h-4 w-4 text-yellow-500 bg-white rounded-full" />
                         )}
                         {isAnswered ? (
-                          <CheckCircle className="absolute -bottom-2 -right-2 h-4 w-4 text-green-500 bg-white rounded-full" />
+                          <CheckCircle className="absolute -bottom-2 -right-2 h-4 w-4 text-blue-500 bg-white rounded-full" />
                         ) : (
-                          <AlertCircle className="absolute -bottom-2 -right-2 h-4 w-4 text-red-500 bg-white rounded-full" />
+                          <AlertCircle className="absolute -bottom-2 -right-2 h-4 w-4 text-orange-400 bg-white rounded-full" />
                         )}
                       </Button>
                     )

@@ -56,11 +56,30 @@ function convertFractionsToLatex(latex: string): string {
     /([a-zA-Z0-9]+)\/\(([^)]+)\)/g,
     '\\frac{$1}{$2}'
   )
-  
+
+  // NEW PASS: Handle number/number when immediately followed by a variable (e.g. "2/7x" -> "\frac{2}{7}x")
+  // This must come before the "simple number/number" pass that expects separators.
+  result = result.replace(
+    /([0-9]+)\/([0-9]+)(?=[a-zA-Z])/g,
+    '\\frac{$1}{$2}'
+  )
+
   // Fourth pass: Handle simple variable/number fractions
   // Match letter(s)/digit(s) or digit(s)/digit(s), stopping before operators or more letters
   result = result.replace(
     /([a-zA-Z]+[0-9]*|[0-9]+)\/([0-9]+)(?=[+\-,)\s]|$)/g,
+    '\\frac{$1}{$2}'
+  )
+
+  // NEW PASS: Handle number / variable (e.g., 12/x or 3/ab)
+  result = result.replace(
+    /([0-9]+)\/([a-zA-Z]+[0-9]*)(?=[+\-*/),\s]|$)/g,
+    '\\frac{$1}{$2}'
+  )
+
+  // NEW PASS: Handle multi-letter variable / multi-letter variable (e.g., ab/cd)
+  result = result.replace(
+    /([a-zA-Z]+[0-9]*)\/([a-zA-Z]+[0-9]*)(?=[+\-*/),\s]|$)/g,
     '\\frac{$1}{$2}'
   )
   
