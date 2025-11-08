@@ -93,6 +93,7 @@ export default function TestResultsPage() {
   const [leaderboardSort, setLeaderboardSort] = useState<{column: string, direction: 'asc' | 'desc'}>({column: 'totalScore', direction: 'desc'})
   const [scoreSubmitted, setScoreSubmitted] = useState(false)
   const [showSubmitDialog, setShowSubmitDialog] = useState(false)
+  const [leaderboardScrollTop, setLeaderboardScrollTop] = useState(0)
 
   // Mock leaderboard data for this test
   const mockLeaderboardData = [
@@ -406,24 +407,32 @@ export default function TestResultsPage() {
   }))
 
   // Prepare leaderboard display data
-  const top7Entries = sortedForRanking.slice(0, 7)
+  const allEntries = sortedForRanking
   const currentUserEntry = currentUserData ? sortedForRanking.find(entry => entry.id === 'current-user') : null
   const currentUserRank = currentUserEntry ? rankMap.get('current-user') || 0 : 0
   const isCurrentUserInTop7 = currentUserRank <= 7
 
-  // If current user is in top 7 or not showing preview, just show top 7
-  // If current user is below top 7 and showing preview, show top 7 + current user at bottom
-  const leaderboardData = (!currentUserEntry || isCurrentUserInTop7 || !scoreSubmitted) ?
-    top7Entries.map(entry => ({
-      ...entry,
-      rank: rankMap.get(entry.id) || (rankMap.size + 1),
-      isPreview: !scoreSubmitted && entry.id === 'current-user'
-    })) :
-    top7Entries.map(entry => ({
-      ...entry,
-      rank: rankMap.get(entry.id) || (rankMap.size + 1),
-      isPreview: false
-    }))
+  // Show all entries in the leaderboard
+  const leaderboardData = allEntries.map(entry => ({
+    ...entry,
+    rank: rankMap.get(entry.id) || (rankMap.size + 1),
+    isPreview: !scoreSubmitted && entry.id === 'current-user'
+  }))
+
+  // Calculate if user's actual entry is visible in the current scroll viewport
+  // Account for table header height (~60px) and row height (~48px)
+  const headerHeight = 60
+  const rowHeight = 48
+  const containerHeight = 384
+  const userEntryIndex = currentUserEntry ? allEntries.findIndex(entry => entry.id === 'current-user') : -1
+  const userEntryTop = userEntryIndex * rowHeight + headerHeight
+  const isUserEntryVisible = userEntryIndex >= 0 && 
+    leaderboardScrollTop <= userEntryTop && 
+    userEntryTop < leaderboardScrollTop + containerHeight
+
+  // Determine if user entry should be shown at top or bottom
+  const showUserAtTop = currentUserEntry && !isUserEntryVisible && userEntryIndex >= 0 && userEntryTop < leaderboardScrollTop
+  const showUserAtBottom = currentUserEntry && !isUserEntryVisible && userEntryIndex >= 0 && userEntryTop >= leaderboardScrollTop + containerHeight
   const handleLeaderboardSort = (column: string) => {
     setLeaderboardSort(prev => ({
       column,
@@ -439,6 +448,10 @@ export default function TestResultsPage() {
 
   const handleShowSubmitDialog = () => {
     setShowSubmitDialog(true)
+  }
+
+  const handleLeaderboardScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    setLeaderboardScrollTop(e.currentTarget.scrollTop)
   }
 
   useEffect(() => {
@@ -882,106 +895,12 @@ export default function TestResultsPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="overflow-auto max-h-96">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-12">
-                          Rank
-                        </TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead 
-                          className="text-right cursor-pointer hover:bg-muted/50"
-                          onClick={() => handleLeaderboardSort('score')}
-                        >
-                          Total Score {leaderboardSort.column === 'score' && (leaderboardSort.direction === 'asc' ? '↑' : '↓')}
-                        </TableHead>
-                        <TableHead 
-                          className="text-right cursor-pointer hover:bg-muted/50"
-                          onClick={() => handleLeaderboardSort('readingScore')}
-                        >
-                          Reading {leaderboardSort.column === 'readingScore' && (leaderboardSort.direction === 'asc' ? '↑' : '↓')}
-                        </TableHead>
-                        <TableHead 
-                          className="text-right cursor-pointer hover:bg-muted/50"
-                          onClick={() => handleLeaderboardSort('mathScore')}
-                        >
-                          Math {leaderboardSort.column === 'mathScore' && (leaderboardSort.direction === 'asc' ? '↑' : '↓')}
-                        </TableHead>
-                        <TableHead 
-                          className="text-right cursor-pointer hover:bg-muted/50"
-                          onClick={() => handleLeaderboardSort('module1')}
-                        >
-                          1 {leaderboardSort.column === 'module1' && (leaderboardSort.direction === 'asc' ? '↑' : '↓')}
-                        </TableHead>
-                        <TableHead 
-                          className="text-right cursor-pointer hover:bg-muted/50"
-                          onClick={() => handleLeaderboardSort('module2')}
-                        >
-                          2 {leaderboardSort.column === 'module2' && (leaderboardSort.direction === 'asc' ? '↑' : '↓')}
-                        </TableHead>
-                        <TableHead 
-                          className="text-right cursor-pointer hover:bg-muted/50"
-                          onClick={() => handleLeaderboardSort('module3')}
-                        >
-                          3 {leaderboardSort.column === 'module3' && (leaderboardSort.direction === 'asc' ? '↑' : '↓')}
-                        </TableHead>
-                        <TableHead 
-                          className="text-right cursor-pointer hover:bg-muted/50"
-                          onClick={() => handleLeaderboardSort('module4')}
-                        >
-                          4 {leaderboardSort.column === 'module4' && (leaderboardSort.direction === 'asc' ? '↑' : '↓')}
-                        </TableHead>
-                        <TableHead 
-                          className="text-right cursor-pointer hover:bg-muted/50"
-                          onClick={() => handleLeaderboardSort('timeSpent')}
-                        >
-                          Time {leaderboardSort.column === 'timeSpent' && (leaderboardSort.direction === 'asc' ? '↑' : '↓')}
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {leaderboardData.map((entry, index) => (
-                        <TableRow
-                          key={entry.id}
-                          className={entry.isCurrentUser ? 'bg-primary/5 border-primary/20' : entry.isPreview ? 'bg-muted/30 border-dashed border-muted-foreground/30' : ''}
-                        >
-                          <TableCell className="font-medium">{entry.rank}</TableCell>
-                          <TableCell className="font-medium">
-                            {entry.name}
-                            {entry.isCurrentUser && (
-                              <Badge variant="secondary" className="ml-2 text-xs">
-                                You
-                              </Badge>
-                            )}
-                            {entry.isPreview && (
-                              <Badge variant="outline" className="ml-2 text-xs">
-                                Preview
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right font-medium">{entry.score}</TableCell>
-                          <TableCell className="text-right">{entry.readingScore}</TableCell>
-                          <TableCell className="text-right">{entry.mathScore}</TableCell>
-                          <TableCell className="text-right">{entry.module1}/27</TableCell>
-                          <TableCell className="text-right">{entry.module2}/27</TableCell>
-                          <TableCell className="text-right">{entry.module3}/22</TableCell>
-                          <TableCell className="text-right">{entry.module4}/22</TableCell>
-                          <TableCell className="text-right">{formatTimeSpent(entry.timeSpent)}</TableCell>
-                        </TableRow>
-                      ))}
-                      {/* Show separator and current user entry when they're below top 7 */}
-                      {!isCurrentUserInTop7 && currentUserEntry && scoreSubmitted && (
-                        <>
-                          <TableRow>
-                            <TableCell colSpan={10} className="text-center py-2">
-                              <div className="flex items-center justify-center gap-2 text-muted-foreground text-sm">
-                                <div className="flex-1 h-px bg-border"></div>
-                                <span>Your Rank</span>
-                                <div className="flex-1 h-px bg-border"></div>
-                              </div>
-                            </TableCell>
-                          </TableRow>
+                <div className="relative">
+                  {/* Overlapping user entry at top when above visible area */}
+                  {showUserAtTop && (
+                    <div className="absolute top-0 left-0 right-0 bg-background/95 backdrop-blur border-b z-10">
+                      <Table>
+                        <TableBody>
                           <TableRow className="bg-primary/5 border-primary/20">
                             <TableCell className="font-medium">{currentUserRank}</TableCell>
                             <TableCell className="font-medium">
@@ -989,6 +908,11 @@ export default function TestResultsPage() {
                               <Badge variant="secondary" className="ml-2 text-xs">
                                 You
                               </Badge>
+                              {!scoreSubmitted && (
+                                <Badge variant="outline" className="ml-2 text-xs">
+                                  Preview
+                                </Badge>
+                              )}
                             </TableCell>
                             <TableCell className="text-right font-medium">{currentUserEntry.score}</TableCell>
                             <TableCell className="text-right">{currentUserEntry.readingScore}</TableCell>
@@ -999,10 +923,132 @@ export default function TestResultsPage() {
                             <TableCell className="text-right">{currentUserEntry.module4}/22</TableCell>
                             <TableCell className="text-right">{formatTimeSpent(currentUserEntry.timeSpent)}</TableCell>
                           </TableRow>
-                        </>
-                      )}
-                    </TableBody>
-                  </Table>
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                  <div className="overflow-auto max-h-96" onScroll={handleLeaderboardScroll}>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12">
+                            Rank
+                          </TableHead>
+                          <TableHead>Name</TableHead>
+                          <TableHead 
+                            className="text-right cursor-pointer hover:bg-muted/50"
+                            onClick={() => handleLeaderboardSort('score')}
+                          >
+                            Total Score {leaderboardSort.column === 'score' && (leaderboardSort.direction === 'asc' ? '↑' : '↓')}
+                          </TableHead>
+                          <TableHead 
+                            className="text-right cursor-pointer hover:bg-muted/50"
+                            onClick={() => handleLeaderboardSort('readingScore')}
+                          >
+                            Reading {leaderboardSort.column === 'readingScore' && (leaderboardSort.direction === 'asc' ? '↑' : '↓')}
+                          </TableHead>
+                          <TableHead 
+                            className="text-right cursor-pointer hover:bg-muted/50"
+                            onClick={() => handleLeaderboardSort('mathScore')}
+                          >
+                            Math {leaderboardSort.column === 'mathScore' && (leaderboardSort.direction === 'asc' ? '↑' : '↓')}
+                          </TableHead>
+                          <TableHead 
+                            className="text-right cursor-pointer hover:bg-muted/50"
+                            onClick={() => handleLeaderboardSort('module1')}
+                          >
+                            1 {leaderboardSort.column === 'module1' && (leaderboardSort.direction === 'asc' ? '↑' : '↓')}
+                          </TableHead>
+                          <TableHead 
+                            className="text-right cursor-pointer hover:bg-muted/50"
+                            onClick={() => handleLeaderboardSort('module2')}
+                          >
+                            2 {leaderboardSort.column === 'module2' && (leaderboardSort.direction === 'asc' ? '↑' : '↓')}
+                          </TableHead>
+                          <TableHead 
+                            className="text-right cursor-pointer hover:bg-muted/50"
+                            onClick={() => handleLeaderboardSort('module3')}
+                          >
+                            3 {leaderboardSort.column === 'module3' && (leaderboardSort.direction === 'asc' ? '↑' : '↓')}
+                          </TableHead>
+                          <TableHead 
+                            className="text-right cursor-pointer hover:bg-muted/50"
+                            onClick={() => handleLeaderboardSort('module4')}
+                          >
+                            4 {leaderboardSort.column === 'module4' && (leaderboardSort.direction === 'asc' ? '↑' : '↓')}
+                          </TableHead>
+                          <TableHead 
+                            className="text-right cursor-pointer hover:bg-muted/50"
+                            onClick={() => handleLeaderboardSort('timeSpent')}
+                          >
+                            Time {leaderboardSort.column === 'timeSpent' && (leaderboardSort.direction === 'asc' ? '↑' : '↓')}
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {leaderboardData.map((entry, index) => (
+                          <TableRow
+                            key={entry.id}
+                            className={entry.isCurrentUser ? 'bg-primary/5 border-primary/20' : entry.isPreview ? 'bg-muted/30 border-dashed border-muted-foreground/30' : ''}
+                          >
+                            <TableCell className="font-medium">{entry.rank}</TableCell>
+                            <TableCell className="font-medium">
+                              {entry.name}
+                              {entry.isCurrentUser && (
+                                <Badge variant="secondary" className="ml-2 text-xs">
+                                  You
+                                </Badge>
+                              )}
+                              {entry.isPreview && (
+                                <Badge variant="outline" className="ml-2 text-xs">
+                                  Preview
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right font-medium">{entry.score}</TableCell>
+                            <TableCell className="text-right">{entry.readingScore}</TableCell>
+                            <TableCell className="text-right">{entry.mathScore}</TableCell>
+                            <TableCell className="text-right">{entry.module1}/27</TableCell>
+                            <TableCell className="text-right">{entry.module2}/27</TableCell>
+                            <TableCell className="text-right">{entry.module3}/22</TableCell>
+                            <TableCell className="text-right">{entry.module4}/22</TableCell>
+                            <TableCell className="text-right">{formatTimeSpent(entry.timeSpent)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  {/* Overlapping user entry at bottom when below visible area */}
+                  {showUserAtBottom && (
+                    <div className="absolute bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t">
+                      <Table>
+                        <TableBody>
+                          <TableRow className="bg-primary/5 border-primary/20">
+                            <TableCell className="font-medium">{currentUserRank}</TableCell>
+                            <TableCell className="font-medium">
+                              {currentUserEntry.name}
+                              <Badge variant="secondary" className="ml-2 text-xs">
+                                You
+                              </Badge>
+                              {!scoreSubmitted && (
+                                <Badge variant="outline" className="ml-2 text-xs">
+                                  Preview
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right font-medium">{currentUserEntry.score}</TableCell>
+                            <TableCell className="text-right">{currentUserEntry.readingScore}</TableCell>
+                            <TableCell className="text-right">{currentUserEntry.mathScore}</TableCell>
+                            <TableCell className="text-right">{currentUserEntry.module1}/27</TableCell>
+                            <TableCell className="text-right">{currentUserEntry.module2}/27</TableCell>
+                            <TableCell className="text-right">{currentUserEntry.module3}/22</TableCell>
+                            <TableCell className="text-right">{currentUserEntry.module4}/22</TableCell>
+                            <TableCell className="text-right">{formatTimeSpent(currentUserEntry.timeSpent)}</TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
