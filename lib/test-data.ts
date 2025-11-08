@@ -46,6 +46,7 @@ export function generateModuleQuestions(
         userAnswer: "",
         difficulty: "medium",
         tags: [q.tag1, q.tag2, q.tag3, q.tag4].filter((t) => t && String(t).trim() !== ""),
+        timeSpent: 0,
       } as TestQuestion
 
       // DEBUG: Log transformed data

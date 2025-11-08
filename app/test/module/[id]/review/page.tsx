@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { CheckCircle, Flag, AlertCircle, ChevronRight } from "lucide-react"
 import type { TestQuestion } from "@/lib/types"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function ModuleReviewPage() {
   const params = useParams()
@@ -59,6 +60,13 @@ export default function ModuleReviewPage() {
     router.push(`/test/module/${moduleId}?question=${questionNumber}`)
   }
 
+  const handleReturnToQuestions = () => {
+    // Get the last viewed question from sessionStorage, default to 1
+    const lastQuestion = sessionStorage.getItem(`module-${moduleId}-last-question`)
+    const questionNumber = lastQuestion ? parseInt(lastQuestion) : 1
+    router.push(`/test/module/${moduleId}?question=${questionNumber}`)
+  }
+
   const getModuleTitle = () => {
     switch (moduleId) {
       case 1:
@@ -77,15 +85,17 @@ export default function ModuleReviewPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center">
+        <div className="max-w-5xl mx-auto flex h-14 items-center justify-between">
           <h1 className="text-lg font-medium">
             Module {moduleId}: {getModuleTitle()} - Review
           </h1>
+          <ThemeToggle />
         </div>
       </header>
 
-      <main className="flex-1 container py-6">
-        <Card className="mb-6">
+      <main className="flex-1 py-6">
+        <div className="max-w-5xl mx-auto">
+          <Card className="mb-6">
           <CardContent className="p-6">
             <div className="grid gap-6">
               <div>
@@ -137,7 +147,7 @@ export default function ModuleReviewPage() {
                         key={question.id}
                         variant="outline"
                         size="sm"
-                        className={`relative h-10 ${
+                        className={`relative h-10 text-gray-900 ${
                           isFlagged
                             ? "border-yellow-500 bg-yellow-50"
                             : isAnswered
@@ -162,7 +172,7 @@ export default function ModuleReviewPage() {
               </div>
 
               <div className="flex justify-between items-center pt-4">
-                <Button variant="outline" onClick={() => handleGoToQuestion(1)}>
+                <Button variant="outline" onClick={handleReturnToQuestions}>
                   Return to Questions
                 </Button>
 
@@ -173,6 +183,7 @@ export default function ModuleReviewPage() {
             </div>
           </CardContent>
         </Card>
+        </div>
       </main>
     </div>
   )

@@ -33,6 +33,7 @@ export interface TestQuestion {
   flagged?: boolean
   difficulty?: "easy" | "medium" | "hard"
   contentColumns?: (string | null | undefined)[] // Add this line
+  timeSpent?: number // Time spent on this question in seconds
 }
 
 // Scoring types

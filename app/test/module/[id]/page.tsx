@@ -13,6 +13,7 @@ import { generateModuleQuestions } from "@/lib/test-data"
 import { useToast } from "@/components/ui/use-toast"
 import type { TestQuestion } from "@/lib/types"
 import { RenderedContent } from "@/components/rendered-content"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 // Add a global declaration so TypeScript recognizes window.Desmos
 declare global {
@@ -42,6 +43,11 @@ export default function TestModulePage() {
   const [questions, setQuestions] = useState<(TestQuestion & { flagged?: boolean })[]>([])
   const [showCalculator, setShowCalculator] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // Track focus state for the fill-in input so we can hide the placeholder when the user clicks in
+  const [isFillFocused, setIsFillFocused] = useState(false)
+
+  // Ref for tracking time spent on current question
+  const questionStartTimeRef = useRef<number>(Date.now())
 
   // Floating calculator position/size state and refs for drag/resize
   const defaultRect = { top: 120, left: 120, width: 950, height: 620 }
@@ -305,17 +311,14 @@ export default function TestModulePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMathModule, showCalculator])
 
-  // Persist calcRect to localStorage (debounced-ish)
+  // Update URL when currentQuestion changes
   useEffect(() => {
-    const id = setTimeout(() => {
-      try {
-        localStorage.setItem("desmosRect", JSON.stringify(calcRect))
-      } catch {
-        /* ignore */
-      }
-    }, 250)
-    return () => clearTimeout(id)
-  }, [calcRect])
+    if (currentQuestion !== initialQuestion) {
+      const newUrl = new URL(window.location.href)
+      newUrl.searchParams.set("question", currentQuestion.toString())
+      window.history.replaceState({}, "", newUrl.toString())
+    }
+  }, [currentQuestion, initialQuestion])
 
   // Initialize questions
   useEffect(() => {
@@ -332,7 +335,13 @@ export default function TestModulePage() {
     const savedQuestions = sessionStorage.getItem(`module-${moduleId}-questions`)
 
     if (savedQuestions) {
-      setQuestions(JSON.parse(savedQuestions))
+      const parsed = JSON.parse(savedQuestions)
+      // Ensure timeSpent is initialized for existing questions
+      const questionsWithTimeSpent = parsed.map((q: any) => ({
+        ...q,
+        timeSpent: q.timeSpent || 0,
+      }))
+      setQuestions(questionsWithTimeSpent)
     } else {
       // Generate questions directly from our question data
       const moduleType = moduleId <= 2 ? "reading" : "math"
@@ -371,6 +380,7 @@ export default function TestModulePage() {
         ...q,
         flagged: false,
         userAnswer: "",
+        timeSpent: q.timeSpent || 0,
       }))
 
       setQuestions(questionsWithState)
@@ -547,6 +557,42 @@ export default function TestModulePage() {
     setQuestions((prev) => prev.map((q, index) => (index === currentQuestion - 1 ? { ...q, flagged: !q.flagged } : q)))
   }
 
+  // Update time spent for a specific question
+  const updateQuestionTimeSpent = (questionIndex: number, additionalTime: number) => {
+    console.log(`Adding ${additionalTime} seconds to question ${questionIndex + 1}`)
+    setQuestions((prev) => prev.map((q, index) => 
+      index === questionIndex 
+        ? { ...q, timeSpent: (q.timeSpent || 0) + additionalTime } 
+        : q
+    ))
+  }
+
+  // Time tracking: when question changes, add time spent to previous question
+  useEffect(() => {
+    const previousQuestionIndex = currentQuestion - 1
+    if (questions.length > 0 && previousQuestionIndex >= 0) {
+      const elapsedSeconds = Math.floor((Date.now() - questionStartTimeRef.current) / 1000)
+      if (elapsedSeconds > 0) {
+        updateQuestionTimeSpent(previousQuestionIndex, elapsedSeconds)
+      }
+    }
+    // Reset start time for new question
+    questionStartTimeRef.current = Date.now()
+  }, [currentQuestion, questions.length])
+
+  // Time tracking: on unmount, add time for current question
+  useEffect(() => {
+    return () => {
+      if (questions.length > 0) {
+        const elapsedSeconds = Math.floor((Date.now() - questionStartTimeRef.current) / 1000)
+        if (elapsedSeconds > 0) {
+          const currentIndex = currentQuestion - 1
+          updateQuestionTimeSpent(currentIndex, elapsedSeconds)
+        }
+      }
+    }
+  }, [questions.length, currentQuestion])
+
   // Navigation functions
   const goToNextQuestion = () => {
     if (currentQuestion < totalQuestions) {
@@ -561,6 +607,8 @@ export default function TestModulePage() {
   }
 
   const goToReview = () => {
+    // Store the current question before navigating to review
+    sessionStorage.setItem(`module-${moduleId}-last-question`, currentQuestion.toString())
     router.push(`/test/module/${moduleId}/review`)
   }
 
@@ -587,27 +635,34 @@ export default function TestModulePage() {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="font-medium">
-              Module {moduleId}: {getModuleTitle()}
-            </span>
+        <div className="max-w-5xl mx-auto px-4 flex h-10 items-center justify-between">
+          <div className="w-[calc(50%-1rem)]">
+            <div className="flex justify-between items-center text-sm mb-1">
+              <span>
+                Question {currentQuestion} of {totalQuestions}
+              </span>
+              <span>{percentComplete}% complete</span>
+            </div>
+            <Progress value={percentComplete} className="h-2 bg-gray-100 dark:bg-gray-700 [&>div]:bg-blue-600" />
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Clock className="h-4 w-4" />
-              <span className={`${timeLeft < 300 ? "text-red-500 font-medium" : ""}`}>{formatTime(timeLeft)}</span>
+              <span className={`${timeLeft < 300 ? "text-orange-400 font-medium" : ""}`}>{formatTime(timeLeft)}</span>
             </div>
+            <ThemeToggle />
             <Button
               variant={currentQuestionData.flagged ? "default" : "outline"}
               size="sm"
               onClick={toggleFlag}
               className={
-                currentQuestionData.flagged ? "bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500" : ""
+                currentQuestionData.flagged ? "bg-yellow-400 hover:bg-yellow-500 text-white border-yellow-400" : ""
               }
             >
-              <Flag className="h-4 w-4 mr-2" />
-              {currentQuestionData.flagged ? "Flagged" : "Flag"}
+              <Flag className="h-4 w-4 min-[800px]:mr-2" />
+              <span className="hidden min-[800px]:inline">
+                {currentQuestionData.flagged ? "Flagged" : "Flag"}
+              </span>
             </Button>
             {isMathModule && (
               <Button
@@ -629,29 +684,21 @@ export default function TestModulePage() {
                   })
                 }}
               >
-                <Calculator className="h-4 w-4 mr-2" />
-                Calculator
+                <Calculator className="h-4 w-4 min-[800px]:mr-2" />
+                <span className="hidden min-[800px]:inline">Calculator</span>
               </Button>
             )}
           </div>
         </div>
-        <div className="container py-2">
-          <div className="flex justify-between items-center text-sm mb-1">
-            <span>
-              Question {currentQuestion} of {totalQuestions}
-            </span>
-            <span>{percentComplete}% complete</span>
-          </div>
-          <Progress value={percentComplete} className="h-2 bg-gray-100 [&>div]:bg-blue-600" />
-        </div>
       </header>
 
-      <main className="flex-1 container py-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <main className="flex-1 pt-6 pb-12">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
           <div className="md:col-span-2">
-            <Card>
+            <Card className="max-w-4xl mx-auto">
               <CardContent className="p-6">
-                <div className="space-y-4">
+                <div className="space-y-4 mb-4">
                   {(currentQuestionData as any).contentColumns && (currentQuestionData as any).contentColumns.length > 0 ? (
                     (currentQuestionData as any).contentColumns.map(
                       (content: any, index: number) =>
@@ -671,14 +718,18 @@ export default function TestModulePage() {
 
                 {!isFreeResponse ? (
                   <RadioGroup
-                    value={currentQuestionData.userAnswer}
-                    onValueChange={updateAnswer}
-                    className="space-y-4 mt-6"
-                  >
+                      value={currentQuestionData.userAnswer}
+                      onValueChange={updateAnswer}
+                    >
                     {options.map((opt) => (
-                      <div key={opt.key} className="flex items-start space-x-3 rounded-md border p-4"
-                        onClick={() => updateAnswer(opt.key)}>
-                        <RadioGroupItem value={opt.key} id={`option-${opt.key}`} className="mt-1" />
+                      <div
+                        key={opt.key}
+                        className={`flex items-center space-x-2 rounded-md border p-3 ${
+                          currentQuestionData.userAnswer === opt.key ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                        }`}
+                        onClick={() => updateAnswer(opt.key)}
+                      >
+                        <RadioGroupItem value={opt.key} id={`option-${opt.key}`} className="flex-shrink-0" />
                         <Label htmlFor={`option-${opt.key}`} className="flex-1 cursor-pointer text-base font-normal">
                           <span className="font-medium mr-2">{opt.key}.</span>
                           <span className="flex-1">
@@ -690,10 +741,6 @@ export default function TestModulePage() {
                   </RadioGroup>
                 ) : (
                   <div className="space-y-4 mt-6">
-                    <p className="text-sm text-muted-foreground">
-                      Enter your answer in the box. Use numbers, decimal points, fractions (with /), or negative signs
-                      as needed.
-                    </p>
                     <div className="max-w-[200px]">
                       <Input
                         value={currentQuestionData.userAnswer}
@@ -705,46 +752,16 @@ export default function TestModulePage() {
                             updateAnswer(value)
                           }
                         }}
+                        onFocus={() => setIsFillFocused(true)}
+                        onBlur={() => setIsFillFocused(false)}
                         className="text-lg font-medium text-center"
-                        placeholder="Your answer"
+                        placeholder={isFillFocused || currentQuestionData.userAnswer ? "" : "Your answer"}
                       />
                     </div>
                   </div>
                 )}
               </CardContent>
             </Card>
-
-            <div className="mt-6 flex justify-between items-center">
-              <Button
-                onClick={goToPreviousQuestion}
-                disabled={currentQuestion === 1}
-                variant="outline"
-                className="gap-2 disabled:opacity-50 disabled:cursor-not-allowed border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800 bg-transparent"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Previous
-              </Button>
-
-              <Button
-                onClick={goToReview}
-                variant="outline"
-                className="gap-2 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
-              >
-                <ListChecks className="h-4 w-4 mr-1" />
-                Review Module
-              </Button>
-
-              {!isLastQuestion ? (
-                <Button onClick={goToNextQuestion} className="gap-2 bg-blue-600 hover:bg-blue-700">
-                  Next <ChevronRight className="h-4 w-4" />
-                </Button>
-              ) : (
-                <Button onClick={goToReview} className="gap-2 bg-blue-600 hover:bg-blue-700">
-                  <ListChecks className="h-4 w-4 mr-1" />
-                  Review Module Summary
-                </Button>
-              )}
-            </div>
           </div>
 
           {/* Floating calculator overlay */}
@@ -830,7 +847,42 @@ export default function TestModulePage() {
             </div>
           )}
         </div>
+        </div>
       </main>
+
+      <footer className="fixed bottom-0 left-0 right-0 z-20 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="max-w-5xl mx-auto px-4 flex h-12 items-center justify-between">
+          <Button
+            onClick={goToPreviousQuestion}
+            disabled={currentQuestion === 1}
+            className="gap-2 bg-orange-400 hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Previous
+          </Button>
+
+          {!isLastQuestion && (
+            <Button
+              onClick={goToReview}
+              className="gap-2 bg-sky-500 hover:bg-sky-600 text-white"
+            >
+              <ListChecks className="h-4 w-4 mr-1" />
+              Review Module
+            </Button>
+          )}
+
+          {!isLastQuestion ? (
+            <Button onClick={goToNextQuestion} className="gap-2 bg-blue-600 hover:bg-blue-700">
+              Next <ChevronRight className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button onClick={goToReview} className="gap-2 bg-sky-500 hover:bg-sky-600 text-white">
+              <ListChecks className="h-4 w-4 mr-1" />
+              Review Module
+            </Button>
+          )}
+        </div>
+      </footer>
     </div>
   )
 }

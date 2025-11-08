@@ -45,13 +45,13 @@ export function RenderedContent({ content, testNumber = 1 }: RenderedContentProp
         if (part.type === "table") {
           return (
             <div key={index} className="my-4 overflow-x-auto">
-              <table className="min-w-full border-collapse border border-gray-300">
+              <table className="min-w-full border-collapse border border-gray-300 dark:border-gray-600">
                 <thead>
-                  <tr className="bg-gray-100">
+                  <tr className="bg-gray-100 dark:bg-gray-800">
                     {part.headers?.map((header, i) => (
                       <th
                         key={i}
-                        className="border border-gray-300 px-4 py-2 text-left font-semibold"
+                        className="border border-gray-300 dark:border-gray-600 px-4 py-2 text-left font-semibold text-gray-900 dark:text-gray-100"
                       >
                         {header}
                       </th>
@@ -60,9 +60,9 @@ export function RenderedContent({ content, testNumber = 1 }: RenderedContentProp
                 </thead>
                 <tbody>
                   {part.rows?.map((row, i) => (
-                    <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                    <tr key={i} className={i % 2 === 0 ? "bg-white dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-800"}>
                       {row.map((cell, j) => (
-                        <td key={j} className="border border-gray-300 px-4 py-2">
+                        <td key={j} className="border border-gray-300 dark:border-gray-600 px-4 py-2 text-gray-900 dark:text-gray-100">
                           {cell}
                         </td>
                       ))}
@@ -76,13 +76,13 @@ export function RenderedContent({ content, testNumber = 1 }: RenderedContentProp
 
         if (part.type === "image") {
           return (
-            <div key={index} className="my-4">
+            <div key={index} className="my-4 flex justify-center">
               <Image
                 src={`/images/test${testNumber}/${part.content}.png`}
                 alt="Question content"
                 width={600}
                 height={400}
-                className="max-w-full h-auto"
+                className="max-w-full w-auto h-auto max-h-[40vh]"
               />
             </div>
           )
