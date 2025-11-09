@@ -45,6 +45,9 @@ export default function TestModulePage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   // Track focus state for the fill-in input so we can hide the placeholder when the user clicks in
   const [isFillFocused, setIsFillFocused] = useState(false)
+  // Highlighting (English modules only)
+  const [currentHighlights, setCurrentHighlights] = useState<{partIndex: number, lineIndex: number, start: number, end: number, text: string}[]>([])
+  const contentRef = useRef<HTMLDivElement | null>(null)
 
   // Ref for tracking time spent on current question
   const questionStartTimeRef = useRef<number>(Date.now())
@@ -161,7 +164,20 @@ export default function TestModulePage() {
 
   const totalQuestions = moduleId <= 2 ? 27 : 22
   const isMathModule = moduleId > 2
+  const isEnglishModule = moduleId <= 2
   const isLastQuestion = currentQuestion === totalQuestions
+
+  // Load highlights for current question when question changes (English only)
+  useEffect(() => {
+    if (!isEnglishModule) return
+    const key = `module-${moduleId}-q${currentQuestion}-highlights`
+    try {
+      const saved = sessionStorage.getItem(key)
+      setCurrentHighlights(saved ? JSON.parse(saved) : [])
+    } catch {
+      setCurrentHighlights([])
+    }
+  }, [moduleId, currentQuestion, isEnglishModule])
 
   // Count how many questions have been answered (reads sessionStorage as a fallback
   // because the review page may update answers there)
@@ -228,6 +244,7 @@ export default function TestModulePage() {
       expressionsTopbar: true, // Show top bar in expressions
       expressionsCollapsed: false, // Keep expressions panel open
       autosize: true,         // Auto-resize to container
+      theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light', // Dark mode support
     })
 
 
@@ -245,6 +262,22 @@ export default function TestModulePage() {
     // Give Desmos a moment, then notify layout
     setTimeout(() => notifyCalcLayoutChange(), 200)
   }
+
+  // Update Desmos theme when app theme changes
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      if (calculatorRef.current) {
+        const newTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light'
+        try {
+          calculatorRef.current.updateSettings({ theme: newTheme })
+        } catch {
+          /* ignore */
+        }
+      }
+    })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
+  }, [])
 
   // Initialize Desmos script + calculator when needed
   useEffect(() => {
@@ -632,11 +665,82 @@ export default function TestModulePage() {
     return null
   }
 
+  const persistHighlights = (highlights: {partIndex: number, lineIndex: number, start: number, end: number, text: string}[]) => {
+    const key = `module-${moduleId}-q${currentQuestion}-highlights`
+    sessionStorage.setItem(key, JSON.stringify(highlights))
+  }
+
+  const handleSelectionHighlight = () => {
+    if (!isEnglishModule) return
+    const root = contentRef.current
+    if (!root) return
+    const sel = window.getSelection()
+    if (!sel || sel.isCollapsed || sel.rangeCount === 0) return
+    const range = sel.getRangeAt(0)
+    // ensure selection is within the content area
+    if (!root.contains(range.commonAncestorContainer)) return
+    const container = range.startContainer
+    if (container.nodeType !== Node.TEXT_NODE) return
+    const lineSpan = container.parentElement
+    if (!lineSpan || !lineSpan.hasAttribute('data-line-index')) return
+    const partSpan = lineSpan.parentElement
+    if (!partSpan || !partSpan.hasAttribute('data-part-index')) return
+    const contentDiv = partSpan.closest('[data-content-index]')
+    if (!contentDiv) return
+    const contentIndex = contentDiv.getAttribute('data-content-index')
+    const partIndex = parseInt(partSpan.getAttribute('data-part-index')!)
+    let globalPartIndex = partIndex
+    if (contentIndex === 'main') {
+      globalPartIndex = 1000 + partIndex
+    } else {
+      globalPartIndex = parseInt(contentIndex!) * 100 + partIndex
+    }
+    const lineIndex = parseInt(lineSpan.getAttribute('data-line-index')!)
+    // Calculate start and end relative to original line text
+    const textNodes: Text[] = []
+    let child = lineSpan.firstChild
+    while (child) {
+      if (child.nodeType === Node.TEXT_NODE) textNodes.push(child as Text)
+      child = child.nextSibling
+    }
+    let start = 0
+    let found = false
+    for (const node of textNodes) {
+      if (node === container) {
+        start += range.startOffset
+        found = true
+        break
+      } else {
+        start += node.textContent!.length
+      }
+    }
+    if (!found) return
+    const end = start + (range.endOffset - range.startOffset)
+    const text = sel.toString().trim()
+    if (text.length < 2) return
+    const clipped = text.length > 140 ? text.slice(0, 140) : text
+    setCurrentHighlights((prev) => {
+      const next = [...prev, {partIndex: globalPartIndex, lineIndex, start, end, text: clipped}]
+      persistHighlights(next)
+      return next
+    })
+    // clear selection
+    try {
+      sel.removeAllRanges()
+    } catch {}
+  }
+
+  const clearHighlights = () => {
+    setCurrentHighlights([])
+    const key = `module-${moduleId}-q${currentQuestion}-highlights`
+    sessionStorage.removeItem(key)
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="max-w-5xl mx-auto px-4 flex h-10 items-center justify-between">
-          <div className="w-[calc(50%-1rem)]">
+        <div className="max-w-5xl mx-auto px-4 flex h-10 items-center relative">
+          <div className="flex-1 mr-4" style={{ maxWidth: 'calc(50% - 4.5rem)' }}>
             <div className="flex justify-between items-center text-sm mb-1">
               <span>
                 Question {currentQuestion} of {totalQuestions}
@@ -645,25 +749,18 @@ export default function TestModulePage() {
             </div>
             <Progress value={percentComplete} className="h-2 bg-gray-100 dark:bg-gray-700 [&>div]:bg-blue-600" />
           </div>
-          <div className="flex items-center gap-4">
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Clock className="h-4 w-4" />
               <span className={`${timeLeft < 300 ? "text-orange-400 font-medium" : ""}`}>{formatTime(timeLeft)}</span>
             </div>
-            <ThemeToggle />
-            <Button
-              variant={currentQuestionData.flagged ? "default" : "outline"}
-              size="sm"
-              onClick={toggleFlag}
-              className={
-                currentQuestionData.flagged ? "bg-yellow-400 hover:bg-yellow-500 text-white border-yellow-400" : ""
-              }
-            >
-              <Flag className="h-4 w-4 min-[800px]:mr-2" />
-              <span className="hidden min-[800px]:inline">
-                {currentQuestionData.flagged ? "Flagged" : "Flag"}
-              </span>
-            </Button>
+          </div>
+          <div className="ml-auto flex items-center gap-4">
+            {isEnglishModule && currentHighlights.length > 0 && (
+              <Button variant="outline" size="sm" onClick={clearHighlights}>
+                Clear
+              </Button>
+            )}
             {isMathModule && (
               <Button
                 variant={showCalculator ? "default" : "outline"}
@@ -688,30 +785,42 @@ export default function TestModulePage() {
                 <span className="hidden min-[800px]:inline">Calculator</span>
               </Button>
             )}
+            <Button
+              variant={currentQuestionData.flagged ? "default" : "outline"}
+              size="sm"
+              onClick={toggleFlag}
+              className={
+                currentQuestionData.flagged ? "bg-yellow-400 hover:bg-yellow-500 text-white border-yellow-400" : ""
+              }
+            >
+              <Flag className="h-4 w-4 min-[800px]:mr-2" />
+              <span className="hidden min-[800px]:inline">
+                {currentQuestionData.flagged ? "Flagged" : "Flag"}
+              </span>
+            </Button>
+            <ThemeToggle />
           </div>
         </div>
-      </header>
-
-      <main className="flex-1 pt-6 pb-12">
+      </header>      <main className="flex-1 pt-6 pb-12">
         <div className="max-w-5xl mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
           <div className="md:col-span-2">
             <Card className="max-w-4xl mx-auto">
-              <CardContent className="p-6">
-                <div className="space-y-4 mb-4">
+              <CardContent className="p-6" onMouseUp={handleSelectionHighlight}>
+                <div ref={contentRef} className="space-y-4 mb-4">
                   {(currentQuestionData as any).contentColumns && (currentQuestionData as any).contentColumns.length > 0 ? (
                     (currentQuestionData as any).contentColumns.map(
                       (content: any, index: number) =>
                         content && (
-                          <div key={index}>
-                            <RenderedContent content={String(content)} testNumber={1} />
+                          <div key={index} data-content-index={index}>
+                            <RenderedContent content={String(content)} testNumber={1} highlights={isEnglishModule ? currentHighlights : []} basePartIndex={index * 100} />
                             {index < (currentQuestionData as any).contentColumns.length - 1 && <hr className="my-4" />}
                           </div>
                         ),
                     )
                   ) : (
-                    <div className="whitespace-pre-wrap">
-                      {String((currentQuestionData as any).content1 || "").replace(/<br\s*\/?>/gi, "\n")}
+                    <div className="whitespace-pre-wrap" data-content-index="main">
+                      <RenderedContent content={String((currentQuestionData as any).content1 || "")} testNumber={1} highlights={isEnglishModule ? currentHighlights : []} basePartIndex={1000} />
                     </div>
                   )}
                 </div>
@@ -766,50 +875,48 @@ export default function TestModulePage() {
 
           {/* Floating calculator overlay */}
           {showCalculator && isMathModule && (
+          <div
+            className="fixed bg-white dark:bg-gray-800 shadow-2xl border border-gray-200 dark:border-gray-600 rounded-lg z-50 overflow-hidden"
+            style={{
+              top: calcRect.top,
+              left: calcRect.left,
+              width: calcRect.width,
+              height: calcRect.height,
+            }}
+          >
+            {/* Drag Bar */}
             <div
-              className="fixed bg-white shadow-2xl border border-gray-200 rounded-lg z-50 overflow-hidden"
-              style={{
-                top: calcRect.top,
-                left: calcRect.left,
-                width: calcRect.width,
-                height: calcRect.height,
+              className="cursor-move bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center px-3 py-1"
+              onMouseDown={(e) => {
+                dragState.current.dragging = true
+                dragState.current.offsetX = e.clientX - calcRect.left
+                dragState.current.offsetY = e.clientY - calcRect.top
               }}
             >
-              {/* Drag Bar */}
-              <div
-                className="cursor-move bg-gray-50 border-b border-gray-200 flex justify-between items-center px-3 py-1"
-                onMouseDown={(e) => {
-                  dragState.current.dragging = true
-                  dragState.current.offsetX = e.clientX - calcRect.left
-                  dragState.current.offsetY = e.clientY - calcRect.top
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  <Calculator className="h-4 w-4 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-700">Desmos Graphing Calculator</span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      // Save state before closing
-                      try {
-                        const state = calculatorRef.current?.getState?.()
-                        if (state) sessionStorage.setItem("desmos-state", JSON.stringify(state))
-                      } catch {
-                        /* ignore */
-                      }
-                      setShowCalculator(false)
-                    }}
-                    className="text-gray-500 hover:text-gray-800 transition px-2 py-1 rounded"
-                    aria-label="Close calculator"
-                  >
-                    ✕
-                  </button>
-                </div>
+              <div className="flex items-center gap-3">
+                <Calculator className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Desmos Graphing Calculator</span>
               </div>
 
-              {/* Calculator body */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    // Save state before closing
+                    try {
+                      const state = calculatorRef.current?.getState?.()
+                      if (state) sessionStorage.setItem("desmos-state", JSON.stringify(state))
+                    } catch {
+                      /* ignore */
+                    }
+                    setShowCalculator(false)
+                  }}
+                  className="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 transition px-2 py-1 rounded"
+                  aria-label="Close calculator"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>              {/* Calculator body */}
               <div
                 ref={calculatorContainerRef}
                 className="w-full h-full"

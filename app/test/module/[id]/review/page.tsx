@@ -1,22 +1,25 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { CheckCircle, Flag, AlertCircle, ChevronRight } from "lucide-react"
+import { CheckCircle, Flag, AlertCircle, ChevronRight, Clock } from "lucide-react"
 import type { TestQuestion } from "@/lib/types"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function ModuleReviewPage() {
   const params = useParams()
   const router = useRouter()
   const moduleId = Number(params.id)
+  const { toast } = useToast()
 
   const [questions, setQuestions] = useState<(TestQuestion & { flagged?: boolean })[]>([])
   const [answeredCount, setAnsweredCount] = useState(0)
   const [flaggedCount, setFlaggedCount] = useState(0)
+  const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const totalQuestions = moduleId <= 2 ? 27 : 22
   const moduleType = moduleId <= 2 ? "reading" : "math"
   const nextModuleId = moduleId < 4 ? moduleId + 1 : null
@@ -40,6 +43,59 @@ export default function ModuleReviewPage() {
       router.push(`/test/module/${moduleId}`)
     }
   }, [moduleId, router])
+
+  // Format time as MM:SS
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
+  }
+
+  const handleTimeUp = useCallback(() => {
+    toast({
+      title: "Time's up!",
+      description: "Your module has been automatically submitted.",
+      variant: "destructive",
+    })
+
+    // Clear the session storage for this module timer
+    sessionStorage.removeItem(`module-${moduleId}-timer-end`)
+
+    // Navigate to next module or results after brief delay
+    setTimeout(() => {
+      if (nextModuleId) {
+        router.push(`/test/module/${nextModuleId}/intro`)
+      } else {
+        router.push(`/test/results`)
+      }
+    }, 1500)
+  }, [moduleId, nextModuleId, router, toast])
+
+  // Calculate time left based on end time in session storage and auto-submit on expiry
+  useEffect(() => {
+    const calculateTimeLeft = () => {
+      const timerEnd = sessionStorage.getItem(`module-${moduleId}-timer-end`)
+      if (!timerEnd) return null
+      const endTime = Number.parseInt(timerEnd)
+      const now = Date.now()
+      const diff = Math.max(0, Math.floor((endTime - now) / 1000))
+      return diff
+    }
+
+    // Initial calculation
+    setTimeLeft(calculateTimeLeft())
+
+    const timer = setInterval(() => {
+      const remaining = calculateTimeLeft()
+      setTimeLeft(remaining)
+      if (remaining !== null && remaining <= 0) {
+        clearInterval(timer)
+        handleTimeUp()
+      }
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [moduleId, handleTimeUp])
 
   const handleSubmit = () => {
     // Mark the module as completed in sessionStorage
@@ -85,11 +141,19 @@ export default function ModuleReviewPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="max-w-5xl mx-auto flex h-14 items-center justify-between">
+        <div className="max-w-5xl mx-auto flex h-10 items-center relative px-4">
           <h1 className="text-lg font-medium">
             Module {moduleId}: {getModuleTitle()} - Review
           </h1>
-          <ThemeToggle />
+          {timeLeft !== null && (
+            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              <span className={`${timeLeft < 300 ? "text-orange-400 font-medium" : ""}`}>{formatTime(timeLeft)}</span>
+            </div>
+          )}
+          <div className="ml-auto flex items-center gap-4">
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
@@ -157,13 +221,12 @@ export default function ModuleReviewPage() {
                         onClick={() => handleGoToQuestion(questionNumber)}
                       >
                         <span>{questionNumber}</span>
-                        {isFlagged && (
-                          <Flag className="absolute -top-2 -right-2 h-4 w-4 text-yellow-500 bg-white rounded-full" />
-                        )}
-                        {isAnswered ? (
-                          <CheckCircle className="absolute -bottom-2 -right-2 h-4 w-4 text-blue-500 bg-white rounded-full" />
+                        {isFlagged ? (
+                          <Flag className="absolute -bottom-2 -right-2 h-4 w-4 text-yellow-500 bg-background rounded-full" />
+                        ) : isAnswered ? (
+                          <CheckCircle className="absolute -bottom-2 -right-2 h-4 w-4 text-blue-500 bg-background rounded-full" />
                         ) : (
-                          <AlertCircle className="absolute -bottom-2 -right-2 h-4 w-4 text-orange-400 bg-white rounded-full" />
+                          <AlertCircle className="absolute -bottom-2 -right-2 h-4 w-4 text-orange-400 bg-background rounded-full" />
                         )}
                       </Button>
                     )

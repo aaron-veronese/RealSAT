@@ -1861,7 +1861,7 @@ export const test1Data = [
     content1:
       "The functions $$f$$ and $$g$$ are defined by the given equations below, where $$x>=0$$. Which of the following equations displays, as a constant or coefficient, the minimum value of the function it defines, where $$x>=0$$?",
     content2: "I. $$f(x)=18(1.4)^{x+5}$$",
-    content3: "II. $$f(x)=18(1.16)(1.4)^{x+3}$$",
+    content3: "II. $$g(x)=18(1.16)(1.4)^{x+3}$$",
     content4: "",
     content5: "",
     answerA: "I only",
