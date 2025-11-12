@@ -6,143 +6,84 @@ export type ContentPart = {
 }
 
 export function parseContent(text: string): ContentPart[] {
-  // Check for images first: @@imageId@@
-  const imageRegex = /@@([^@]+)@@/g
-  let match
   const parts: ContentPart[] = []
-  let lastIndex = 0
+  let remaining = text
 
-  while ((match = imageRegex.exec(text)) !== null) {
-    // Add text before image
-    if (match.index > lastIndex) {
-      const textBefore = text.substring(lastIndex, match.index)
-      parts.push(...parseTextAndLatex(textBefore))
+  while (remaining.length > 0) {
+    // Check for image pattern @@image-id@@
+    const imageMatch = remaining.match(/^@@([^@]+)@@/)
+    if (imageMatch) {
+      parts.push({ type: "image", content: imageMatch[1] })
+      remaining = remaining.slice(imageMatch[0].length)
+      continue
     }
 
-    // Add image
-    parts.push({ type: "image", content: match[1] })
-    lastIndex = match.index + match[0].length
-  }
+    // Check for table pattern (lines with | or ||)
+    const tableMatch = remaining.match(/^((?:[^\n]*\|[^\n]*\n?)+)/)
+    if (tableMatch) {
+      const tableText = tableMatch[1].trim()
+      const normalizedText = tableText.includes('||') && !tableText.includes('\n')
+        ? tableText.replace(/\|\|/g, '\n')
+        : tableText
+      const lines = normalizedText.split('\n').map((line) => line.trim()).filter((l) => l.length > 0)
+      
+      if (lines.length > 0) {
+        // First line with || is header, otherwise first line is header
+        const hasHeaderDelimiter = lines[0].includes('||')
+        let headers: string[] = []
+        let dataLines: string[] = []
 
-  // Add remaining text
-  if (lastIndex < text.length) {
-    const remaining = text.substring(lastIndex)
-    parts.push(...parseTextAndLatex(remaining))
-  }
+        if (hasHeaderDelimiter) {
+          headers = lines[0].split('||').map(h => h.trim())
+          dataLines = lines.slice(1)
+        } else {
+          headers = lines[0].split('|').map(h => h.trim())
+          dataLines = lines.slice(1)
+        }
 
-  // If no images were found, just parse text/latex
-  if (parts.length === 0) {
-    return parseTextAndLatex(text)
-  }
+        const rows = dataLines.map(line => {
+          // Check if this line uses || for row separation
+          if (line.includes('||')) {
+            return line.split('||').map(cell => cell.trim())
+          }
+          return line.split('|').map(cell => cell.trim())
+        })
 
-  return parts
-}
+        parts.push({ type: "table", content: tableText, headers, rows })
+      }
+      
+      remaining = remaining.slice(tableMatch[0].length)
+      continue
+    }
 
-function convertFractionsToLatex(latex: string): string {
-  // First pass: Handle fractions with parentheses on both sides
-  let result = latex.replace(
-    /\(([^)]+)\)\/\(([^)]+)\)/g,
-    '\\frac{$1}{$2}'
-  )
-  
-  // Second pass: Handle fractions with parentheses in numerator only
-  result = result.replace(
-    /\(([^)]+)\)\/([a-zA-Z0-9]+)/g,
-    '\\frac{$1}{$2}'
-  )
-  
-  // Third pass: Handle fractions with parentheses in denominator only
-  result = result.replace(
-    /([a-zA-Z0-9]+)\/\(([^)]+)\)/g,
-    '\\frac{$1}{$2}'
-  )
+    // Check for LaTeX pattern $$...$$
+    const latexMatch = remaining.match(/^\$\$([^$]+)\$\$/)
+    if (latexMatch) {
+      parts.push({ type: "latex", content: latexMatch[1] })
+      remaining = remaining.slice(latexMatch[0].length)
+      continue
+    }
 
-  // NEW PASS: Handle number/number when immediately followed by a variable (e.g. "2/7x" -> "\frac{2}{7}x")
-  // This must come before the "simple number/number" pass that expects separators.
-  result = result.replace(
-    /([0-9]+)\/([0-9]+)(?=[a-zA-Z])/g,
-    '\\frac{$1}{$2}'
-  )
-
-  // Fourth pass: Handle simple variable/number fractions
-  // Match letter(s)/digit(s) or digit(s)/digit(s), stopping before operators or more letters
-  result = result.replace(
-    /([a-zA-Z]+[0-9]*|[0-9]+)\/([0-9]+)(?=[+\-,)\s]|$)/g,
-    '\\frac{$1}{$2}'
-  )
-
-  // NEW PASS: Handle number / variable (e.g., 12/x or 3/ab)
-  result = result.replace(
-    /([0-9]+)\/([a-zA-Z]+[0-9]*)(?=[+\-*/),\s]|$)/g,
-    '\\frac{$1}{$2}'
-  )
-
-  // NEW PASS: Handle multi-letter variable / multi-letter variable (e.g., ab/cd)
-  result = result.replace(
-    /([a-zA-Z]+[0-9]*)\/([a-zA-Z]+[0-9]*)(?=[+\-*/),\s]|$)/g,
-    '\\frac{$1}{$2}'
-  )
-  
-  // Fifth pass: Handle single letter / single letter
-  result = result.replace(
-    /([a-zA-Z])\/([a-zA-Z])(?![a-zA-Z0-9])/g,
-    '\\frac{$1}{$2}'
-  )
-  
-  return result
-}
-
-function convertInequalitySymbols(latex: string): string {
-  return latex
-    .replace(/<=/g, '\\leq ')
-    .replace(/>=/g, '\\geq ')
-}
-
-function parseTextAndLatex(text: string): ContentPart[] {
-  const parts: ContentPart[] = []
-  
-  // Check if the entire text is a table (starts with header|data pattern)
-  if (text.includes('|') && !text.includes('@@')) {
-    // Split by pattern: space followed by digit (handles numbers with commas)
-    const lines = text.split(/\s+(?=[\d])/)
-    
-    // First part is headers
-    const headers = lines[0].split('|').map(h => h.trim())
-    
-    // Rest are data rows
-    const rows = lines.slice(1).map(line => 
-      line.split('|').map(cell => cell.trim())
+    // Find next special pattern
+    const nextSpecialIndex = Math.min(
+      ...[
+        remaining.indexOf('@@'),
+        remaining.indexOf('$$'),
+        remaining.search(/^[^\n]*\|/m)
+      ].filter(i => i !== -1)
     )
-    
-    parts.push({ type: "table", content: text, headers, rows })
-    return parts
-  }
 
-  // Parse LaTeX: $$content$$
-  const latexRegex = /\$\$([^\$]+)\$\$/g
-  let lastIndex = 0
-  let match
-
-  while ((match = latexRegex.exec(text)) !== null) {
-    // Add text before LaTeX
-    if (match.index > lastIndex) {
-      const textBefore = text.substring(lastIndex, match.index)
-      if (textBefore) parts.push({ type: "text", content: textBefore })
+    if (nextSpecialIndex === -1 || nextSpecialIndex === Infinity) {
+      // No more special patterns, rest is text
+      parts.push({ type: "text", content: remaining })
+      break
     }
 
-    // Process the LaTeX content (match[1] is the content between $$)
-    let latexContent = match[1]
-    latexContent = convertInequalitySymbols(latexContent)
-    latexContent = convertFractionsToLatex(latexContent)
-    
-    parts.push({ type: "latex", content: latexContent })
-    lastIndex = match.index + match[0].length
-  }
-
-  // Add remaining text
-  if (lastIndex < text.length) {
-    const remaining = text.substring(lastIndex)
-    if (remaining) parts.push({ type: "text", content: remaining })
+    // Add text before next special pattern
+    if (nextSpecialIndex > 0) {
+      parts.push({ type: "text", content: remaining.slice(0, nextSpecialIndex) })
+      remaining = remaining.slice(nextSpecialIndex)
+    }
   }
 
   return parts

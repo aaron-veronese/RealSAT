@@ -9,14 +9,34 @@ import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function NewTestPage() {
   const router = useRouter()
-  const [isStarting, setIsStarting] = useState(false)
+  const [startMode, setStartMode] = useState<null | "full" | "rw" | "math">(null)
+  const testId = 1
 
-  const startTest = () => {
-    setIsStarting(true)
+  const beginFullTest = () => {
+    if (startMode) return
+    setStartMode("full")
 
     setTimeout(() => {
       router.push("/test/module/1/intro")
     }, 1000)
+  }
+
+  const beginReadingOnly = () => {
+    if (startMode) return
+    setStartMode("rw")
+
+    setTimeout(() => {
+      router.push("/test/module/1/intro?scope=reading")
+    }, 600)
+  }
+
+  const beginMathOnly = () => {
+    if (startMode) return
+    setStartMode("math")
+
+    setTimeout(() => {
+      router.push("/test/module/3/intro?scope=math")
+    }, 600)
   }
 
   return (
@@ -33,7 +53,7 @@ export default function NewTestPage() {
       <main className="flex-1 py-6">
         <div className="max-w-5xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Start New Test</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Test {testId}</h1>
           <p className="text-muted-foreground">Begin a full SAT practice test with 4 modules</p>
         </div>
 
@@ -96,7 +116,7 @@ export default function NewTestPage() {
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <span>35 minutes</span>
                 </p>
-                <p>22 questions (MCQ & free-response)</p>
+                <p>22 questions (some fill-in-the-blank)</p>
               </div>
             </CardContent>
           </Card>
@@ -151,9 +171,30 @@ export default function NewTestPage() {
               </p>
             </div>
           </CardContent>
-          <CardFooter>
-            <Button onClick={startTest} disabled={isStarting} size="lg" className="w-full md:w-auto">
-              {isStarting ? "Preparing test..." : "Begin Full Practice Test"}
+          <CardFooter className="flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-4">
+            <Button
+              onClick={beginReadingOnly}
+              disabled={Boolean(startMode)}
+              size="lg"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white sm:flex-1"
+            >
+              {startMode === "rw" ? "Preparing..." : "Reading & Writing Only"}
+            </Button>
+            <Button
+              onClick={beginMathOnly}
+              disabled={Boolean(startMode)}
+              size="lg"
+              className="w-full bg-orange-400 hover:bg-orange-500 text-white sm:flex-1"
+            >
+              {startMode === "math" ? "Preparing..." : "Mathematics Only"}
+            </Button>
+            <Button
+              onClick={beginFullTest}
+              disabled={Boolean(startMode)}
+              size="lg"
+              className="w-full bg-sky-500 hover:bg-sky-600 text-white sm:flex-1"
+            >
+              {startMode === "full" ? "Preparing test..." : "Begin Full Practice Test"}
             </Button>
           </CardFooter>
         </Card>

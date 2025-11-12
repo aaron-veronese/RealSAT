@@ -9,24 +9,44 @@ interface RenderedContentProps {
   testNumber?: number
   highlights?: {partIndex: number, lineIndex: number, start: number, end: number, text: string}[]
   basePartIndex?: number
+  enableFormatting?: boolean
 }
 
-export function RenderedContent({ content, testNumber = 1, highlights = [], basePartIndex = 0 }: RenderedContentProps) {
+export function RenderedContent({ 
+  content, 
+  testNumber = 1, 
+  highlights = [], 
+  basePartIndex = 0,
+  enableFormatting = false 
+}: RenderedContentProps) {
   const parts = parseContent(content)
 
   return (
     <>
       {parts.map((part, index) => {
         if (part.type === "text") {
-          const lines = part.content.split(/\r?\n/)
-          const textParts = lines.map((line, i) => (
-            <span key={i} data-line-index={i}>
-              {applyHighlights(line, highlights, basePartIndex + index, i)}
-            </span>
-          ))
+          // Only split on explicit \n markers for line breaks (not all newlines)
+          const lines = part.content.split('\\n')
+          
           return (
-            <span key={index} className="text-base leading-relaxed whitespace-pre-line" data-part-index={index}>
-              {textParts}
+            <span key={index} className="text-base leading-relaxed whitespace-pre-wrap" data-part-index={index}>
+              {lines.map((line, lineIdx) => {
+                // Apply text formatting if enabled
+                let processedLine: (string | JSX.Element)[] = [line]
+                
+                if (enableFormatting) {
+                  processedLine = applyTextFormatting(line)
+                }
+
+                return (
+                  <span key={lineIdx} data-line-index={lineIdx}>
+                    {highlights.length > 0 
+                      ? applyHighlights(processedLine, highlights, basePartIndex + index, lineIdx)
+                      : processedLine}
+                    {lineIdx < lines.length - 1 && <br />}
+                  </span>
+                )
+              })}
             </span>
           )
         }
@@ -97,32 +117,75 @@ export function RenderedContent({ content, testNumber = 1, highlights = [], base
   )
 }
 
-// ----- Highlight helpers -----
-function applyHighlights(text: string, highlights: {partIndex: number, lineIndex: number, start: number, end: number, text: string}[], partIndex: number, lineIndex: number) {
-  const relevant = highlights.filter(h => h.partIndex === partIndex && h.lineIndex === lineIndex).sort((a, b) => a.start - b.start)
-  if (relevant.length === 0) return text
+// Apply bold (**text**), italic (*text*), underline (_text_)
+function applyTextFormatting(text: string): (string | JSX.Element)[] {
+  const parts: (string | JSX.Element)[] = []
+  let remaining = text
+  let key = 0
 
+  // Pattern: **bold**, *italic*, _underline_
+  const formatRegex = /(\*\*[^*]+\*\*|\*[^*]+\*|_[^_]+_)/g
+  let match
+  let lastIndex = 0
+
+  while ((match = formatRegex.exec(remaining)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(remaining.slice(lastIndex, match.index))
+    }
+
+    const matched = match[0]
+    if (matched.startsWith('**') && matched.endsWith('**')) {
+      parts.push(<strong key={key++}>{matched.slice(2, -2)}</strong>)
+    } else if (matched.startsWith('*') && matched.endsWith('*')) {
+      parts.push(<em key={key++}>{matched.slice(1, -1)}</em>)
+    } else if (matched.startsWith('_') && matched.endsWith('_')) {
+      parts.push(<u key={key++}>{matched.slice(1, -1)}</u>)
+    }
+
+    lastIndex = match.index + matched.length
+  }
+
+  if (lastIndex < remaining.length) {
+    parts.push(remaining.slice(lastIndex))
+  }
+
+  return parts.length > 0 ? parts : [text]
+}
+
+// Highlight helpers
+function applyHighlights(
+  content: (string | JSX.Element)[], 
+  highlights: {partIndex: number, lineIndex: number, start: number, end: number, text: string}[], 
+  partIndex: number, 
+  lineIndex: number
+): (string | JSX.Element)[] {
+  const relevant = highlights.filter(h => h.partIndex === partIndex && h.lineIndex === lineIndex)
+    .sort((a, b) => a.start - b.start)
+  
+  if (relevant.length === 0) return content
+
+  // Flatten content to string for highlighting
+  const text = content.map(c => typeof c === 'string' ? c : c.props?.children || '').join('')
+  
   const parts: (string | JSX.Element)[] = []
   let lastEnd = 0
-  let key = 0
+  let key = 1000
 
   for (const h of relevant) {
     if (h.start > lastEnd) {
       parts.push(text.slice(lastEnd, h.start))
     }
     parts.push(
-      <mark key={key++} className="bg-sky-500/100 dark:bg-orange-400/100">
+      <mark key={key++} className="bg-sky-500/30 dark:bg-orange-400/30">
         {text.slice(h.start, h.end)}
       </mark>
     )
     lastEnd = h.end
   }
+  
   if (lastEnd < text.length) {
     parts.push(text.slice(lastEnd))
   }
-  return parts.map((part, idx) => typeof part === 'string' ? <span key={idx}>{part}</span> : part)
-}
 
-function escapeRegExp(str: string) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  return parts
 }

@@ -1,18 +1,121 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import Link from "next/link"
+import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { ArrowRight, Home, Gem } from "lucide-react"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { ChartContainer } from "@/components/ui/chart"
+import { Home, Gem, ChevronUp } from "lucide-react"
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  Area,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+} from "recharts"
 import { calculateTestScore } from "@/lib/scoring"
 import { RenderedContent } from "@/components/rendered-content"
 import { ThemeToggle } from "@/components/theme-toggle"
 import type { Test, TestModule, TestScore } from "@/lib/types"
+
+type StoredProgressEntry = {
+  id: string
+  completedAt: number
+  reading: number
+  math: number
+  testId: number
+}
+
+type ProgressChartPoint = StoredProgressEntry & {
+  total: number
+  index: number
+  label: string
+}
+
+const SCORE_DOMAIN: [number, number] = [0, 1600]
+
+type TooltipContentProps = {
+  active?: boolean
+  payload?: Array<{ payload?: ProgressChartPoint }>
+}
+
+type LegendContentProps = {
+  payload?: ReadonlyArray<{ value?: string | number; color?: string }>
+}
+
+const fetchUserTestResults = async (): Promise<StoredProgressEntry[]> => {
+  await new Promise((resolve) => setTimeout(resolve, 150))
+
+  return [
+    {
+      id: "result-2025-03-02",
+      completedAt: new Date("2025-03-02T14:15:00Z").getTime(),
+      reading: 585,
+      math: 645,
+      testId: 28,
+    },
+    {
+      id: "result-2025-02-10",
+      completedAt: new Date("2025-02-10T16:40:00Z").getTime(),
+      reading: 610,
+      math: 670,
+      testId: 24,
+    },
+    {
+      id: "result-2025-01-18",
+      completedAt: new Date("2025-01-18T13:05:00Z").getTime(),
+      reading: 560,
+      math: 640,
+      testId: 22,
+    },
+    {
+      id: "result-2024-12-12",
+      completedAt: new Date("2024-12-12T18:20:00Z").getTime(),
+      reading: 540,
+      math: 620,
+      testId: 19,
+    },
+    {
+      id: "result-2024-11-03",
+      completedAt: new Date("2024-11-03T09:30:00Z").getTime(),
+      reading: 520,
+      math: 610,
+      testId: 17,
+    },
+  ]
+}
+
+const formatAxisLabel = (timestamp: number): string => {
+  try {
+    return new Date(timestamp).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    })
+  } catch {
+    return ""
+  }
+}
+
+const deriveTestIdFromModules = (modules: TestModule[]): number | null => {
+  for (const module of modules) {
+    if (!module?.testId) continue
+    const match = module.testId.match(/\d+/)
+    if (match?.[0]) {
+      const parsed = Number(match[0])
+      if (Number.isFinite(parsed)) {
+        return parsed
+      }
+    }
+  }
+  return null
+}
 
 // Safe math expression evaluator for free response answers
 function evaluateMathExpression(expression: string): number | null {
@@ -74,6 +177,8 @@ export default function TestResultsPage() {
   const [testScore, setTestScore] = useState<TestScore | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [modules, setModules] = useState<TestModule[]>([])
+  const { resolvedTheme } = useTheme()
+  const [userResults, setUserResults] = useState<StoredProgressEntry[]>([])
 
   // Animation states
   const [animatedTotal, setAnimatedTotal] = useState(0)
@@ -89,11 +194,278 @@ export default function TestResultsPage() {
   const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set())
   const [requestedVideos, setRequestedVideos] = useState<Map<string, 'pending' | 'available'>>(new Map())
   const [timeSortOrder, setTimeSortOrder] = useState<'desc' | 'asc' | 'none'>('none')
-  const [showLeaderboard, setShowLeaderboard] = useState(false)
-  const [leaderboardSort, setLeaderboardSort] = useState<{column: string, direction: 'asc' | 'desc'}>({column: 'totalScore', direction: 'desc'})
-  const [scoreSubmitted, setScoreSubmitted] = useState(false)
-  const [showSubmitDialog, setShowSubmitDialog] = useState(false)
+  const [leaderboardSort, setLeaderboardSort] = useState<{column: string, direction: 'asc' | 'desc'}>({column: 'score', direction: 'desc'})
   const [leaderboardScrollTop, setLeaderboardScrollTop] = useState(0)
+  const [activeTab, setActiveTab] = useState<'score' | 'leaderboard' | 'progress'>('score')
+  const [showScrollTop, setShowScrollTop] = useState(false)
+
+  const scrollToTop = useCallback(() => {
+    if (typeof window === "undefined") return
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 320)
+    }
+
+    handleScroll()
+    window.addEventListener("scroll", handleScroll)
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!testScore) return
+
+    let isMounted = true
+
+    const loadResults = async () => {
+      const computedCompletedAt = (() => {
+        const latest = modules.reduce((acc, module) => {
+          if (!module?.completedAt) return acc
+          const time = module.completedAt instanceof Date ? module.completedAt.getTime() : new Date(module.completedAt).getTime()
+          return Math.max(acc, Number.isFinite(time) ? time : acc)
+        }, 0)
+        return latest || Date.now()
+      })()
+
+      try {
+        const fetched = await fetchUserTestResults()
+        const sanitized = fetched
+          .map((entry) => ({
+            id: entry.id,
+            completedAt: Number(entry.completedAt),
+            reading: Number(entry.reading),
+            math: Number(entry.math),
+            testId: Number(entry.testId),
+          }))
+          .filter(
+            (entry): entry is StoredProgressEntry =>
+              Boolean(entry.id) &&
+              Number.isFinite(entry.completedAt) &&
+              Number.isFinite(entry.reading) &&
+              Number.isFinite(entry.math) &&
+              Number.isFinite(entry.testId),
+          )
+
+        const resolvedTestId = deriveTestIdFromModules(modules) ?? sanitized[sanitized.length - 1]?.testId ?? 1
+
+        const currentEntry: StoredProgressEntry = {
+          id: `current-${Date.now()}`,
+          completedAt: computedCompletedAt,
+          reading: testScore.readingWriting.scaledScore,
+          math: testScore.math.scaledScore,
+          testId: resolvedTestId,
+        }
+
+        const merged = [...sanitized]
+
+        const duplicate = merged.some(
+          (entry) =>
+            Math.abs(entry.completedAt - currentEntry.completedAt) < 60000 &&
+            entry.reading === currentEntry.reading &&
+            entry.math === currentEntry.math,
+        )
+        if (!duplicate) {
+          merged.push(currentEntry)
+        }
+
+        merged.sort((a, b) => a.completedAt - b.completedAt)
+
+        if (isMounted) {
+          setUserResults(merged)
+        }
+      } catch (error) {
+        console.error("Failed to load user results", error)
+        if (isMounted) {
+          const fallbackTestId = deriveTestIdFromModules(modules) ?? 1
+          setUserResults([
+            {
+              id: `current-${Date.now()}`,
+              completedAt: computedCompletedAt,
+              reading: testScore.readingWriting.scaledScore,
+              math: testScore.math.scaledScore,
+              testId: fallbackTestId,
+            },
+          ])
+        }
+      }
+    }
+
+    loadResults()
+
+    return () => {
+      isMounted = false
+    }
+  }, [testScore, modules])
+
+  const chartData = useMemo<ProgressChartPoint[]>(() => {
+    return userResults
+      .slice()
+      .sort((a, b) => a.completedAt - b.completedAt)
+      .map((entry, index) => ({
+        ...entry,
+        total: entry.reading + entry.math,
+        index,
+        label: formatAxisLabel(entry.completedAt),
+      }))
+  }, [userResults])
+
+  const xTicks = useMemo(() => chartData.map((entry) => entry.index), [chartData])
+
+  const xDomain = useMemo<[number, number]>(() => [0, Math.max(chartData.length - 1, 0)], [chartData])
+
+  const chartColors = useMemo(() => {
+    const isDarkTheme = resolvedTheme === "dark"
+    return {
+      reading: {
+        stroke: "#3b82f6",
+        fill: "rgba(59,130,246,0.18)",
+      },
+      math: {
+        stroke: "#f97316",
+        fill: isDarkTheme ? "rgba(249,115,22,0.2)" : "rgba(249,115,22,0.15)",
+      },
+    }
+  }, [resolvedTheme])
+
+  const renderTooltip = useCallback(
+    ({ active, payload }: TooltipContentProps) => {
+      if (!active || !payload || payload.length === 0) {
+        return null
+      }
+
+      const point = payload[0]?.payload as ProgressChartPoint | undefined
+      if (!point) {
+        return null
+      }
+
+      return (
+        <div className="space-y-2 rounded-md border border-border bg-background px-3 py-2 text-xs shadow-sm">
+          <div className="font-semibold text-muted-foreground">
+            Test {point.testId}
+          </div>
+          <div className="flex items-center gap-2">
+            <span
+              className="inline-flex h-2.5 w-2.5 rounded-full border border-border bg-white"
+            />
+            <span className="font-medium text-foreground">Total: {point.total}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span
+              className="inline-flex h-2.5 w-2.5 rounded-full"
+              style={{ backgroundColor: chartColors.math.stroke }}
+            />
+            <span className="text-foreground">Math: {point.math}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span
+              className="inline-flex h-2.5 w-2.5 rounded-full"
+              style={{ backgroundColor: chartColors.reading.stroke }}
+            />
+            <span className="text-foreground">Reading &amp; Writing: {point.reading}</span>
+          </div>
+        </div>
+      )
+    },
+    [chartColors.math.stroke, chartColors.reading.stroke],
+  )
+
+  const renderLegend = useCallback(
+    ({ payload }: LegendContentProps) => {
+      if (!payload) {
+        return null
+      }
+
+      return (
+        <div className="flex justify-center gap-6 pt-3 text-xs text-muted-foreground sm:text-sm">
+          {payload.map((entry, index) => {
+            const labelValue = entry.value ?? ""
+            const label = typeof labelValue === "number" ? labelValue.toString() : labelValue
+            const color = entry.color ?? "currentColor"
+
+            return (
+              <div key={`${label}-${index}`} className="flex items-center gap-2">
+                <span
+                  className="inline-flex h-2.5 w-2.5 rounded-full"
+                  style={{ backgroundColor: color }}
+                />
+                <span>{label}</span>
+              </div>
+            )
+          })}
+        </div>
+      )
+    },
+    [],
+  )
+
+  const primaryTestId = useMemo(() => {
+    const moduleDerived = deriveTestIdFromModules(modules)
+    if (moduleDerived && moduleDerived > 0) {
+      return moduleDerived
+    }
+
+    let latest: StoredProgressEntry | null = null
+    for (const entry of userResults) {
+      if (!latest || entry.completedAt > latest.completedAt) {
+        latest = entry
+      }
+    }
+
+    return latest?.testId ?? null
+  }, [modules, userResults])
+
+  const headerTitle = primaryTestId ? `Test ${primaryTestId} Results` : "Test Results"
+
+
+  const leaderboardColumnWidths = {
+    rank: '3.5rem',
+    name: '10rem',
+    totalScore: '6rem',
+    readingScore: '6rem',
+    mathScore: '6rem',
+    module: '5rem',
+    time: '6rem',
+  }
+  const getColumnStyle = (key: keyof typeof leaderboardColumnWidths) => ({
+    width: leaderboardColumnWidths[key],
+    minWidth: leaderboardColumnWidths[key],
+  })
+  const renderLeaderboardColgroup = () => (
+    <colgroup>
+      <col style={getColumnStyle('rank')} />
+      <col style={getColumnStyle('name')} />
+      <col style={getColumnStyle('totalScore')} />
+      <col style={getColumnStyle('readingScore')} />
+      <col style={getColumnStyle('mathScore')} />
+      <col style={getColumnStyle('module')} />
+      <col style={getColumnStyle('module')} />
+      <col style={getColumnStyle('module')} />
+      <col style={getColumnStyle('module')} />
+      <col style={getColumnStyle('time')} />
+    </colgroup>
+  )
+  const getSortIndicator = (column: string) =>
+    leaderboardSort.column === column && leaderboardSort.direction === 'asc' ? '↑' : '↓'
+  const renderSortableHeaderContent = (label: string, column: string) => (
+    <span className="flex items-center justify-end gap-1 text-right">
+      <span
+        className={`text-xs transition-opacity w-3 text-center ${
+          leaderboardSort.column === column ? 'opacity-100' : 'opacity-0'
+        }`}
+        aria-hidden="true"
+      >
+        {getSortIndicator(column)}
+      </span>
+      <span className="whitespace-nowrap">{label}</span>
+    </span>
+  )
 
   // Mock leaderboard data for this test
   const mockLeaderboardData = [
@@ -362,7 +734,7 @@ export default function TestResultsPage() {
   // Current user's data (would come from actual test results)
   const currentUserData = testScore ? {
     id: "current-user",
-    name: "You",
+    name: "ThongJuice",
     score: testScore.total,
     readingScore: testScore.readingWriting.scaledScore,
     mathScore: testScore.math.scaledScore,
@@ -388,6 +760,9 @@ export default function TestResultsPage() {
     isCurrentUser: true,
   } : null
 
+  // Determine if score should be submitted to leaderboard
+  // Only submit if all 4 modules are present
+
   // Calculate ranks based on current sort column and direction
   const sortedForRanking = currentUserData ?
     [...mockLeaderboardData, currentUserData].sort((a, b) => {
@@ -410,20 +785,17 @@ export default function TestResultsPage() {
   const allEntries = sortedForRanking
   const currentUserEntry = currentUserData ? sortedForRanking.find(entry => entry.id === 'current-user') : null
   const currentUserRank = currentUserEntry ? rankMap.get('current-user') || 0 : 0
-  const isCurrentUserInTop7 = currentUserRank <= 7
-
   // Show all entries in the leaderboard
   const leaderboardData = allEntries.map(entry => ({
     ...entry,
     rank: rankMap.get(entry.id) || (rankMap.size + 1),
-    isPreview: !scoreSubmitted && entry.id === 'current-user'
   }))
 
   // Calculate if user's actual entry is visible in the current scroll viewport
   // Account for table header height (~60px) and row height (~48px)
   const headerHeight = 60
   const rowHeight = 48
-  const containerHeight = 384
+  const containerHeight = 480
   const userEntryIndex = currentUserEntry ? allEntries.findIndex(entry => entry.id === 'current-user') : -1
   const userEntryTop = userEntryIndex * rowHeight + headerHeight
   const isUserEntryVisible = userEntryIndex >= 0 && 
@@ -438,16 +810,6 @@ export default function TestResultsPage() {
       column,
       direction: prev.column === column && prev.direction === 'desc' ? 'asc' : 'desc'
     }))
-  }
-
-  const handleSubmitScore = () => {
-    setScoreSubmitted(true)
-    setShowSubmitDialog(false)
-    // In a real app, this would send the score to a backend
-  }
-
-  const handleShowSubmitDialog = () => {
-    setShowSubmitDialog(true)
   }
 
   const handleLeaderboardScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -549,8 +911,9 @@ export default function TestResultsPage() {
     const incrementMath = score.math.scaledScore / steps
     const incrementModules = rawScores.map(s => s / steps)
     const incrementProgressBars = rawScores.map(s => s / steps) // Same as modules for now
-    const incrementReadingDash = ((score.readingWriting.scaledScore / 1600) * 251.2) / steps
-    const incrementMathDash = ((score.math.scaledScore / 1600) * 251.2) / steps
+    // Each section is half the circle (125.6 units), so score/800 * 125.6
+    const incrementReadingDash = ((score.readingWriting.scaledScore / 800) * 125.6) / steps
+    const incrementMathDash = ((score.math.scaledScore / 800) * 125.6) / steps
 
     let current = 0
     const timer = setInterval(() => {
@@ -569,8 +932,8 @@ export default function TestResultsPage() {
         setAnimatedMath(score.math.scaledScore)
         setAnimatedModuleScores(rawScores)
         setAnimatedProgressBars(rawScores)
-        setAnimatedReadingDash((score.readingWriting.scaledScore / 1600) * 251.2)
-        setAnimatedMathDash((score.math.scaledScore / 1600) * 251.2)
+        setAnimatedReadingDash((score.readingWriting.scaledScore / 800) * 125.6)
+        setAnimatedMathDash((score.math.scaledScore / 800) * 125.6)
         clearInterval(timer)
       }
     }, duration / steps)
@@ -590,6 +953,9 @@ export default function TestResultsPage() {
       }
     })
   )
+
+  const getQuestionKey = (question: typeof allQuestions[number]) =>
+    question.id || `${question.moduleType}-${question.moduleNumber}-${question.questionNumber}`
 
   // Filter questions
   const filteredQuestions = allQuestions.filter(question => {
@@ -622,37 +988,50 @@ export default function TestResultsPage() {
     }
   })
 
+  const anyExpanded = filteredQuestions.some(question => expandedQuestions.has(getQuestionKey(question)))
+
   const toggleFilter = (filter: string) => {
+    setExpandedQuestions(new Set())
     if (filter === 'all') {
       setSelectedFilters(['all'])
-    } else {
-      setSelectedFilters(prev => {
-        let newFilters = [...prev.filter(f => f !== 'all')]
-        if (newFilters.includes(filter)) {
-          newFilters = newFilters.filter(f => f !== filter)
-        } else {
-          // Remove conflicting filters
-          const conflicts: Record<string, string[]> = {
-            correct: ['incorrect', 'unanswered'],
-            incorrect: ['correct', 'unanswered'],
-            unanswered: ['correct', 'incorrect'],
-            reading: ['math'],
-            math: ['reading'],
-          }
-          newFilters = newFilters.filter(f => !conflicts[filter].includes(f))
-          newFilters.push(filter)
-        }
-        return newFilters.length === 0 ? ['all'] : newFilters
-      })
+      return
     }
+
+    setSelectedFilters(prev => {
+      let newFilters = prev.filter(f => f !== 'all')
+      if (newFilters.includes(filter)) {
+        newFilters = newFilters.filter(f => f !== filter)
+      } else {
+        // Remove conflicting filters
+        const conflicts: Record<string, string[]> = {
+          correct: ['incorrect', 'unanswered'],
+          incorrect: ['correct', 'unanswered'],
+          unanswered: ['correct', 'incorrect'],
+          reading: ['math'],
+          math: ['reading'],
+        }
+        newFilters = newFilters.filter(f => !(conflicts[filter] || []).includes(f))
+        newFilters.push(filter)
+      }
+      return newFilters.length === 0 ? ['all'] : newFilters
+    })
   }
 
   const toggleTimeSort = () => {
+    setExpandedQuestions(new Set())
     setTimeSortOrder(prev => {
       if (prev === 'none') return 'desc'
       if (prev === 'desc') return 'asc'
       return 'none'
     })
+  }
+
+  const toggleExpandCollapseAll = () => {
+    if (anyExpanded) {
+      setExpandedQuestions(new Set())
+    } else {
+      setExpandedQuestions(new Set(filteredQuestions.map(getQuestionKey)))
+    }
   }
 
   // Group questions by module
@@ -730,9 +1109,9 @@ export default function TestResultsPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="max-w-5xl mx-auto flex h-16 items-center justify-between">
+        <div className="max-w-5xl mx-auto flex h-10 items-center justify-between">
           <div className="flex items-center gap-2 font-bold">
-            <span>SAT Mirror</span>
+            <span>{headerTitle}</span>
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
@@ -747,317 +1126,438 @@ export default function TestResultsPage() {
       </header>
 
       <main className="flex-1 py-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight mb-2">Results</h1>
-              <p className="text-muted-foreground">
-                Here's how you performed on your practice test!
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              onClick={() => setShowLeaderboard(!showLeaderboard)}
-              className="gap-2"
-            >
-              {showLeaderboard ? 'Hide Leaderboard' : 'View Leaderboard'}
-            </Button>
-          </div>
-
+  <div className="max-w-5xl mx-auto">
           <Card className="mb-8">
-            <CardHeader className="text-center">
-              <div className="relative w-48 h-48 mx-auto mb-4">
-                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                  {/* Grey background for incorrect */}
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="40"
-                    fill="none"
-                    stroke="#e5e7eb"
-                    strokeWidth="8"
-                  />
-                  {/* Reading slice */}
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="40"
-                    fill="none"
-                    stroke="#3b82f6"
-                    strokeWidth="8"
-                    strokeDasharray={`${animatedReadingDash} 251.2`}
-                    strokeDashoffset="0"
-                  />
-                  {/* Math slice */}
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="40"
-                    fill="none"
-                    stroke="#f97316"
-                    strokeWidth="8"
-                    strokeDasharray={`${animatedMathDash} 251.2`}
-                    strokeDashoffset={`${-animatedReadingDash}`}
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="text-4xl font-bold">{animatedTotal}</div>
-                    <div className="text-sm text-muted-foreground">Total Score</div>
-                  </div>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-6 md:grid-cols-2">
-                {/* Reading & Writing Section */}
-                <div className="space-y-4">
-                  <div className="text-center">
-                    <div className="text-3xl font-bold">
-                      {animatedReading}
-                      <span className="text-lg text-muted-foreground">/800</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">Reading & Writing</p>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span className="font-medium">Module 1</span>
-                        <span className="font-bold">{Math.round(animatedModuleScores[0])}/27</span>
-                      </div>
-                      <div className="flex h-2 rounded-full overflow-hidden">
-                        <div className="bg-blue-500" style={{ width: `${(animatedProgressBars[0] / 27) * 100}%` }}></div>
-                        <div className="bg-gray-200 flex-1"></div>
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span className="font-medium">Module 2</span>
-                        <span className="font-bold">{Math.round(animatedModuleScores[1])}/27</span>
-                      </div>
-                      <div className="flex h-2 rounded-full overflow-hidden">
-                        <div className="bg-blue-500" style={{ width: `${(animatedProgressBars[1] / 27) * 100}%` }}></div>
-                        <div className="bg-gray-200 flex-1"></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Math Section */}
-                <div className="space-y-4">
-                  <div className="text-center">
-                    <div className="text-3xl font-bold">
-                      {animatedMath}
-                      <span className="text-lg text-muted-foreground">/800</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">Mathematics</p>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span className="font-medium">Module 3</span>
-                        <span className="font-bold">{Math.round(animatedModuleScores[2])}/22</span>
-                      </div>
-                      <div className="flex h-2 rounded-full overflow-hidden">
-                        <div className="bg-orange-400" style={{ width: `${(animatedProgressBars[2] / 22) * 100}%` }}></div>
-                        <div className="bg-gray-200 flex-1"></div>
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span className="font-medium">Module 4</span>
-                        <span className="font-bold">{Math.round(animatedModuleScores[3])}/22</span>
-                      </div>
-                      <div className="flex h-2 rounded-full overflow-hidden">
-                        <div className="bg-orange-400" style={{ width: `${(animatedProgressBars[3] / 22) * 100}%` }}></div>
-                        <div className="bg-gray-200 flex-1"></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {showLeaderboard && (
-            <Card className="mb-8">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Leaderboard</CardTitle>
-                  {!scoreSubmitted && currentUserData && (
-                    <Button
-                      onClick={handleShowSubmitDialog}
-                      size="sm"
-                    >
-                      Submit Score
-                    </Button>
-                  )}
-                </div>
+            <Tabs
+              value={activeTab}
+              onValueChange={(value) => setActiveTab(value as 'score' | 'leaderboard' | 'progress')}
+            >
+              <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <TabsList className="w-full justify-start sm:w-auto">
+                  <TabsTrigger value="score" className="px-4">Score Overview</TabsTrigger>
+                  <TabsTrigger value="leaderboard" className="px-4">Leaderboard</TabsTrigger>
+                  <TabsTrigger value="progress" className="px-4">Your Progress</TabsTrigger>
+                </TabsList>
               </CardHeader>
-              <CardContent>
-                <div className="relative">
-                  {/* Overlapping user entry at top when above visible area */}
-                  {showUserAtTop && (
-                    <div className="absolute top-0 left-0 right-0 bg-background/95 backdrop-blur border-b z-10">
-                      <Table>
-                        <TableBody>
-                          <TableRow className="bg-primary/5 border-primary/20">
-                            <TableCell className="font-medium">{currentUserRank}</TableCell>
-                            <TableCell className="font-medium">
-                              {currentUserEntry.name}
-                              <Badge variant="secondary" className="ml-2 text-xs">
-                                You
-                              </Badge>
-                              {!scoreSubmitted && (
-                                <Badge variant="outline" className="ml-2 text-xs">
-                                  Preview
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right font-medium">{currentUserEntry.score}</TableCell>
-                            <TableCell className="text-right">{currentUserEntry.readingScore}</TableCell>
-                            <TableCell className="text-right">{currentUserEntry.mathScore}</TableCell>
-                            <TableCell className="text-right">{currentUserEntry.module1}/27</TableCell>
-                            <TableCell className="text-right">{currentUserEntry.module2}/27</TableCell>
-                            <TableCell className="text-right">{currentUserEntry.module3}/22</TableCell>
-                            <TableCell className="text-right">{currentUserEntry.module4}/22</TableCell>
-                            <TableCell className="text-right">{formatTimeSpent(currentUserEntry.timeSpent)}</TableCell>
-                          </TableRow>
-                        </TableBody>
-                      </Table>
+              <CardContent className="pb-4">
+                <TabsContent value="score" className="mt-0 min-h-[480px]">
+                  <div className="flex flex-col items-center justify-center gap-8">
+                    <div className="relative h-60 w-60 sm:h-72 sm:w-72">
+                      <svg className="h-full w-full rotate-90" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" strokeWidth="8" />
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="40"
+                          fill="none"
+                          stroke="#3b82f6"
+                          strokeWidth="8"
+                          strokeDasharray={`${animatedReadingDash} 251.2`}
+                          strokeDashoffset="0"
+                        />
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="40"
+                          fill="none"
+                          stroke="#f97316"
+                          strokeWidth="8"
+                          strokeDasharray={`${animatedMathDash} 251.2`}
+                          strokeDashoffset="0"
+                          transform="scale(1 -1) translate(0 -100)"
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="text-5xl font-bold">{animatedTotal}</div>
+                          <div className="text-sm text-muted-foreground">Total Score</div>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                  <div className="overflow-auto max-h-96" onScroll={handleLeaderboardScroll}>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-12">
-                            Rank
-                          </TableHead>
-                          <TableHead>Name</TableHead>
-                          <TableHead 
-                            className="text-right cursor-pointer hover:bg-muted/50"
-                            onClick={() => handleLeaderboardSort('score')}
-                          >
-                            Total Score {leaderboardSort.column === 'score' && (leaderboardSort.direction === 'asc' ? '↑' : '↓')}
-                          </TableHead>
-                          <TableHead 
-                            className="text-right cursor-pointer hover:bg-muted/50"
-                            onClick={() => handleLeaderboardSort('readingScore')}
-                          >
-                            Reading {leaderboardSort.column === 'readingScore' && (leaderboardSort.direction === 'asc' ? '↑' : '↓')}
-                          </TableHead>
-                          <TableHead 
-                            className="text-right cursor-pointer hover:bg-muted/50"
-                            onClick={() => handleLeaderboardSort('mathScore')}
-                          >
-                            Math {leaderboardSort.column === 'mathScore' && (leaderboardSort.direction === 'asc' ? '↑' : '↓')}
-                          </TableHead>
-                          <TableHead 
-                            className="text-right cursor-pointer hover:bg-muted/50"
-                            onClick={() => handleLeaderboardSort('module1')}
-                          >
-                            1 {leaderboardSort.column === 'module1' && (leaderboardSort.direction === 'asc' ? '↑' : '↓')}
-                          </TableHead>
-                          <TableHead 
-                            className="text-right cursor-pointer hover:bg-muted/50"
-                            onClick={() => handleLeaderboardSort('module2')}
-                          >
-                            2 {leaderboardSort.column === 'module2' && (leaderboardSort.direction === 'asc' ? '↑' : '↓')}
-                          </TableHead>
-                          <TableHead 
-                            className="text-right cursor-pointer hover:bg-muted/50"
-                            onClick={() => handleLeaderboardSort('module3')}
-                          >
-                            3 {leaderboardSort.column === 'module3' && (leaderboardSort.direction === 'asc' ? '↑' : '↓')}
-                          </TableHead>
-                          <TableHead 
-                            className="text-right cursor-pointer hover:bg-muted/50"
-                            onClick={() => handleLeaderboardSort('module4')}
-                          >
-                            4 {leaderboardSort.column === 'module4' && (leaderboardSort.direction === 'asc' ? '↑' : '↓')}
-                          </TableHead>
-                          <TableHead 
-                            className="text-right cursor-pointer hover:bg-muted/50"
-                            onClick={() => handleLeaderboardSort('timeSpent')}
-                          >
-                            Time {leaderboardSort.column === 'timeSpent' && (leaderboardSort.direction === 'asc' ? '↑' : '↓')}
-                          </TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {leaderboardData.map((entry, index) => (
-                          <TableRow
-                            key={entry.id}
-                            className={entry.isCurrentUser ? 'bg-primary/5 border-primary/20' : entry.isPreview ? 'bg-muted/30 border-dashed border-muted-foreground/30' : ''}
-                          >
-                            <TableCell className="font-medium">{entry.rank}</TableCell>
-                            <TableCell className="font-medium">
-                              {entry.name}
-                              {entry.isCurrentUser && (
+
+                    <div className="grid w-full gap-6 md:grid-cols-2">
+                      <div className="space-y-4">
+                        <div className="text-center">
+                          <div className="text-3xl font-bold">
+                            {animatedReading}
+                            <span className="text-lg text-muted-foreground">/800</span>
+                          </div>
+                          <p className="text-sm text-muted-foreground">Reading &amp; Writing</p>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-sm">
+                              <span className="font-medium">Module 1</span>
+                              <span className="font-bold">{Math.round(animatedModuleScores[0])}/27</span>
+                            </div>
+                            <div className="flex h-2 overflow-hidden rounded-full">
+                              <div className="bg-blue-500" style={{ width: `${(animatedProgressBars[0] / 27) * 100}%` }} />
+                              <div className="flex-1 bg-gray-200" />
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-sm">
+                              <span className="font-medium">Module 2</span>
+                              <span className="font-bold">{Math.round(animatedModuleScores[1])}/27</span>
+                            </div>
+                            <div className="flex h-2 overflow-hidden rounded-full">
+                              <div className="bg-blue-500" style={{ width: `${(animatedProgressBars[1] / 27) * 100}%` }} />
+                              <div className="flex-1 bg-gray-200" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="text-center">
+                          <div className="text-3xl font-bold">
+                            {animatedMath}
+                            <span className="text-lg text-muted-foreground">/800</span>
+                          </div>
+                          <p className="text-sm text-muted-foreground">Mathematics</p>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-sm">
+                              <span className="font-medium">Module 3</span>
+                              <span className="font-bold">{Math.round(animatedModuleScores[2])}/22</span>
+                            </div>
+                            <div className="flex h-2 overflow-hidden rounded-full">
+                              <div className="bg-orange-400" style={{ width: `${(animatedProgressBars[2] / 22) * 100}%` }} />
+                              <div className="flex-1 bg-gray-200" />
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-sm">
+                              <span className="font-medium">Module 4</span>
+                              <span className="font-bold">{Math.round(animatedModuleScores[3])}/22</span>
+                            </div>
+                            <div className="flex h-2 overflow-hidden rounded-full">
+                              <div className="bg-orange-400" style={{ width: `${(animatedProgressBars[3] / 22) * 100}%` }} />
+                              <div className="flex-1 bg-gray-200" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="leaderboard" className="mt-0 min-h-[480px]">
+                  <div className="relative">
+                    {showUserAtTop && currentUserEntry && (
+                      <div className="absolute top-0 left-0 right-0 z-10 border-b bg-background/95 backdrop-blur">
+                        <Table className="table-fixed">
+                          {renderLeaderboardColgroup()}
+                          <TableHeader className="sr-only">
+                            <TableRow>
+                              <TableHead style={getColumnStyle('rank')}>Rank</TableHead>
+                              <TableHead style={getColumnStyle('name')}>Name</TableHead>
+                              <TableHead style={getColumnStyle('totalScore')} className="text-right">Total</TableHead>
+                              <TableHead style={getColumnStyle('readingScore')} className="text-right">Reading</TableHead>
+                              <TableHead style={getColumnStyle('mathScore')} className="text-right">Math</TableHead>
+                              <TableHead style={getColumnStyle('module')} className="text-right">1</TableHead>
+                              <TableHead style={getColumnStyle('module')} className="text-right">2</TableHead>
+                              <TableHead style={getColumnStyle('module')} className="text-right">3</TableHead>
+                              <TableHead style={getColumnStyle('module')} className="text-right">4</TableHead>
+                              <TableHead style={getColumnStyle('time')} className="text-right">Time</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            <TableRow className="border-primary/20 bg-primary/5">
+                              <TableCell style={getColumnStyle('rank')}>
+                                {currentUserRank}
+                              </TableCell>
+                              <TableCell style={getColumnStyle('name')}>
+                                {currentUserEntry.name}
                                 <Badge variant="secondary" className="ml-2 text-xs">
                                   You
                                 </Badge>
-                              )}
-                              {entry.isPreview && (
-                                <Badge variant="outline" className="ml-2 text-xs">
-                                  Preview
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right font-medium">{entry.score}</TableCell>
-                            <TableCell className="text-right">{entry.readingScore}</TableCell>
-                            <TableCell className="text-right">{entry.mathScore}</TableCell>
-                            <TableCell className="text-right">{entry.module1}/27</TableCell>
-                            <TableCell className="text-right">{entry.module2}/27</TableCell>
-                            <TableCell className="text-right">{entry.module3}/22</TableCell>
-                            <TableCell className="text-right">{entry.module4}/22</TableCell>
-                            <TableCell className="text-right">{formatTimeSpent(entry.timeSpent)}</TableCell>
+                              </TableCell>
+                              <TableCell style={getColumnStyle('totalScore')} className="whitespace-nowrap text-right">{currentUserEntry.score}</TableCell>
+                              <TableCell style={getColumnStyle('readingScore')} className="whitespace-nowrap text-right">{currentUserEntry.readingScore}</TableCell>
+                              <TableCell style={getColumnStyle('mathScore')} className="whitespace-nowrap text-right">{currentUserEntry.mathScore}</TableCell>
+                              <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{currentUserEntry.module1}/27</TableCell>
+                              <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{currentUserEntry.module2}/27</TableCell>
+                              <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{currentUserEntry.module3}/22</TableCell>
+                              <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{currentUserEntry.module4}/22</TableCell>
+                              <TableCell style={getColumnStyle('time')} className="whitespace-nowrap text-right">{formatTimeSpent(currentUserEntry.timeSpent)}</TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+
+                    <div className="max-h-[480px] overflow-auto" onScroll={handleLeaderboardScroll}>
+                      <Table className="table-fixed">
+                        {renderLeaderboardColgroup()}
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead style={getColumnStyle('rank')}>
+                              Rank
+                            </TableHead>
+                            <TableHead style={getColumnStyle('name')}>Name</TableHead>
+                            <TableHead
+                              style={getColumnStyle('totalScore')}
+                              className="cursor-pointer text-right hover:bg-muted/50"
+                              onClick={() => handleLeaderboardSort('score')}
+                              aria-sort={
+                                leaderboardSort.column === 'score'
+                                  ? leaderboardSort.direction === 'asc'
+                                    ? 'ascending'
+                                    : 'descending'
+                                  : undefined
+                              }
+                            >
+                              {renderSortableHeaderContent('Total', 'score')}
+                            </TableHead>
+                            <TableHead
+                              style={getColumnStyle('readingScore')}
+                              className="cursor-pointer text-right hover:bg-muted/50"
+                              onClick={() => handleLeaderboardSort('readingScore')}
+                              aria-sort={
+                                leaderboardSort.column === 'readingScore'
+                                  ? leaderboardSort.direction === 'asc'
+                                    ? 'ascending'
+                                    : 'descending'
+                                  : undefined
+                              }
+                            >
+                              {renderSortableHeaderContent('Reading', 'readingScore')}
+                            </TableHead>
+                            <TableHead
+                              style={getColumnStyle('mathScore')}
+                              className="cursor-pointer text-right hover:bg-muted/50"
+                              onClick={() => handleLeaderboardSort('mathScore')}
+                              aria-sort={
+                                leaderboardSort.column === 'mathScore'
+                                  ? leaderboardSort.direction === 'asc'
+                                    ? 'ascending'
+                                    : 'descending'
+                                  : undefined
+                              }
+                            >
+                              {renderSortableHeaderContent('Math', 'mathScore')}
+                            </TableHead>
+                            <TableHead
+                              style={getColumnStyle('module')}
+                              className="cursor-pointer text-right hover:bg-muted/50"
+                              onClick={() => handleLeaderboardSort('module1')}
+                              aria-sort={
+                                leaderboardSort.column === 'module1'
+                                  ? leaderboardSort.direction === 'asc'
+                                    ? 'ascending'
+                                    : 'descending'
+                                  : undefined
+                              }
+                            >
+                              {renderSortableHeaderContent('1', 'module1')}
+                            </TableHead>
+                            <TableHead
+                              style={getColumnStyle('module')}
+                              className="cursor-pointer text-right hover:bg-muted/50"
+                              onClick={() => handleLeaderboardSort('module2')}
+                              aria-sort={
+                                leaderboardSort.column === 'module2'
+                                  ? leaderboardSort.direction === 'asc'
+                                    ? 'ascending'
+                                    : 'descending'
+                                  : undefined
+                              }
+                            >
+                              {renderSortableHeaderContent('2', 'module2')}
+                            </TableHead>
+                            <TableHead
+                              style={getColumnStyle('module')}
+                              className="cursor-pointer text-right hover:bg-muted/50"
+                              onClick={() => handleLeaderboardSort('module3')}
+                              aria-sort={
+                                leaderboardSort.column === 'module3'
+                                  ? leaderboardSort.direction === 'asc'
+                                    ? 'ascending'
+                                    : 'descending'
+                                  : undefined
+                              }
+                            >
+                              {renderSortableHeaderContent('3', 'module3')}
+                            </TableHead>
+                            <TableHead
+                              style={getColumnStyle('module')}
+                              className="cursor-pointer text-right hover:bg-muted/50"
+                              onClick={() => handleLeaderboardSort('module4')}
+                              aria-sort={
+                                leaderboardSort.column === 'module4'
+                                  ? leaderboardSort.direction === 'asc'
+                                    ? 'ascending'
+                                    : 'descending'
+                                  : undefined
+                              }
+                            >
+                              {renderSortableHeaderContent('4', 'module4')}
+                            </TableHead>
+                            <TableHead
+                              style={getColumnStyle('time')}
+                              className="cursor-pointer text-right hover:bg-muted/50"
+                              onClick={() => handleLeaderboardSort('timeSpent')}
+                              aria-sort={
+                                leaderboardSort.column === 'timeSpent'
+                                  ? leaderboardSort.direction === 'asc'
+                                    ? 'ascending'
+                                    : 'descending'
+                                  : undefined
+                              }
+                            >
+                              {renderSortableHeaderContent('Time', 'timeSpent')}
+                            </TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                  {/* Overlapping user entry at bottom when below visible area */}
-                  {showUserAtBottom && (
-                    <div className="absolute bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t">
-                      <Table>
+                        </TableHeader>
                         <TableBody>
-                          <TableRow className="bg-primary/5 border-primary/20">
-                            <TableCell className="font-medium">{currentUserRank}</TableCell>
-                            <TableCell className="font-medium">
-                              {currentUserEntry.name}
-                              <Badge variant="secondary" className="ml-2 text-xs">
-                                You
-                              </Badge>
-                              {!scoreSubmitted && (
-                                <Badge variant="outline" className="ml-2 text-xs">
-                                  Preview
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right font-medium">{currentUserEntry.score}</TableCell>
-                            <TableCell className="text-right">{currentUserEntry.readingScore}</TableCell>
-                            <TableCell className="text-right">{currentUserEntry.mathScore}</TableCell>
-                            <TableCell className="text-right">{currentUserEntry.module1}/27</TableCell>
-                            <TableCell className="text-right">{currentUserEntry.module2}/27</TableCell>
-                            <TableCell className="text-right">{currentUserEntry.module3}/22</TableCell>
-                            <TableCell className="text-right">{currentUserEntry.module4}/22</TableCell>
-                            <TableCell className="text-right">{formatTimeSpent(currentUserEntry.timeSpent)}</TableCell>
-                          </TableRow>
+                          {leaderboardData.map((entry) => (
+                            <TableRow
+                              key={entry.id}
+                              className={entry.isCurrentUser ? 'border-primary/20 bg-primary/5' : ''}
+                            >
+                              <TableCell style={getColumnStyle('rank')}>
+                                {entry.rank}
+                              </TableCell>
+                              <TableCell style={getColumnStyle('name')}>
+                                {entry.name}
+                                {entry.isCurrentUser && (
+                                  <Badge variant="secondary" className="ml-2 text-xs">
+                                    You
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell style={getColumnStyle('totalScore')} className="whitespace-nowrap text-right">{entry.score}</TableCell>
+                              <TableCell style={getColumnStyle('readingScore')} className="whitespace-nowrap text-right">{entry.readingScore}</TableCell>
+                              <TableCell style={getColumnStyle('mathScore')} className="whitespace-nowrap text-right">{entry.mathScore}</TableCell>
+                              <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{entry.module1}/27</TableCell>
+                              <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{entry.module2}/27</TableCell>
+                              <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{entry.module3}/22</TableCell>
+                              <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{entry.module4}/22</TableCell>
+                              <TableCell style={getColumnStyle('time')} className="whitespace-nowrap text-right">{formatTimeSpent(entry.timeSpent)}</TableCell>
+                            </TableRow>
+                          ))}
                         </TableBody>
                       </Table>
                     </div>
-                  )}
-                </div>
+
+                    {showUserAtBottom && currentUserEntry && (
+                      <div className="absolute bottom-0 left-0 right-0 border-t bg-background/95 backdrop-blur">
+                        <Table className="table-fixed">
+                          {renderLeaderboardColgroup()}
+                          <TableHeader className="sr-only">
+                            <TableRow>
+                              <TableHead style={getColumnStyle('rank')}>Rank</TableHead>
+                              <TableHead style={getColumnStyle('name')}>Name</TableHead>
+                              <TableHead style={getColumnStyle('totalScore')} className="text-right">Total</TableHead>
+                              <TableHead style={getColumnStyle('readingScore')} className="text-right">Reading</TableHead>
+                              <TableHead style={getColumnStyle('mathScore')} className="text-right">Math</TableHead>
+                              <TableHead style={getColumnStyle('module')} className="text-right">1</TableHead>
+                              <TableHead style={getColumnStyle('module')} className="text-right">2</TableHead>
+                              <TableHead style={getColumnStyle('module')} className="text-right">3</TableHead>
+                              <TableHead style={getColumnStyle('module')} className="text-right">4</TableHead>
+                              <TableHead style={getColumnStyle('time')} className="text-right">Time</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            <TableRow className="border-primary/20 bg-primary/5">
+                              <TableCell style={getColumnStyle('rank')}>
+                                {currentUserRank}
+                              </TableCell>
+                              <TableCell style={getColumnStyle('name')}>
+                                {currentUserEntry.name}
+                                <Badge variant="secondary" className="ml-2 text-xs">
+                                  You
+                                </Badge>
+                              </TableCell>
+                              <TableCell style={getColumnStyle('totalScore')} className="whitespace-nowrap text-right">{currentUserEntry.score}</TableCell>
+                              <TableCell style={getColumnStyle('readingScore')} className="whitespace-nowrap text-right">{currentUserEntry.readingScore}</TableCell>
+                              <TableCell style={getColumnStyle('mathScore')} className="whitespace-nowrap text-right">{currentUserEntry.mathScore}</TableCell>
+                              <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{currentUserEntry.module1}/27</TableCell>
+                              <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{currentUserEntry.module2}/27</TableCell>
+                              <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{currentUserEntry.module3}/22</TableCell>
+                              <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{currentUserEntry.module4}/22</TableCell>
+                              <TableCell style={getColumnStyle('time')} className="whitespace-nowrap text-right">{formatTimeSpent(currentUserEntry.timeSpent)}</TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="progress" className="mt-0 max-h-[480px]">
+                  <div className="space-y-4">
+                    {chartData.length > 0 ? (
+                      <ChartContainer size="lg" className="w-full h-[520px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <ComposedChart data={chartData} margin={{ top: 16, right: 24, bottom: 56, left: 0 }}>
+                            <CartesianGrid strokeDasharray="4 4" stroke="rgba(148, 163, 184, 0.35)" />
+                            <XAxis
+                              type="number"
+                              dataKey="index"
+                              ticks={xTicks}
+                              domain={xDomain}
+                              height={40}
+                              interval={0}
+                              allowDecimals={false}
+                              padding={{ left: 0, right: 0 }}
+                              tick={{ fontSize: 12 }}
+                              tickFormatter={(value) => {
+                                const point = chartData.find((entry) => entry.index === value)
+                                return point ? point.label : ''
+                              }}
+                            />
+                            <YAxis
+                              tick={{ fontSize: 12 }}
+                              width={56}
+                              domain={SCORE_DOMAIN}
+                              allowDecimals={false}
+                              tickFormatter={(value) => value.toString()}
+                            />
+                            <Tooltip cursor={{ strokeDasharray: "3 3" }} content={renderTooltip} />
+                            <Legend verticalAlign="bottom" align="center" content={renderLegend} />
+                            <Area
+                              type="monotone"
+                              dataKey="reading"
+                              name="Reading & Writing"
+                              stroke={chartColors.reading.stroke}
+                              fill={chartColors.reading.fill}
+                              strokeWidth={2}
+                              dot={{ r: 4, fill: chartColors.reading.stroke, strokeWidth: 0 }}
+                              activeDot={{ r: 6 }}
+                              stackId="scores"
+                              connectNulls
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="math"
+                              name="Math"
+                              stroke={chartColors.math.stroke}
+                              fill={chartColors.math.fill}
+                              strokeWidth={2}
+                              dot={{ r: 4, fill: chartColors.math.stroke, strokeWidth: 0 }}
+                              activeDot={{ r: 6 }}
+                              stackId="scores"
+                              connectNulls
+                            />
+                          </ComposedChart>
+                        </ResponsiveContainer>
+                      </ChartContainer>
+                    ) : (
+                      <div className="rounded border border-dashed border-muted-foreground/20 px-4 py-10 text-center text-sm text-muted-foreground">
+                        No practice attempts recorded yet. Complete a full-length test to populate your progress chart.
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
               </CardContent>
-            </Card>
-          )}
+            </Tabs>
+          </Card>
 
           {/* Question Review Section */}
           <div className="mt-8">
-            <h2 className="text-2xl font-bold mb-4">Question Review</h2>
-
             {/* Filters */}
             <div className="flex flex-wrap gap-2 mb-6 items-center justify-between">
               <div className="flex flex-wrap gap-2">
@@ -1107,17 +1607,28 @@ export default function TestResultsPage() {
                   Math
                 </Button>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={toggleTimeSort}
-                className="gap-1"
-              >
-                Time Spent
-                {timeSortOrder === 'desc' && <span className="text-xs">▼</span>}
-                {timeSortOrder === 'asc' && <span className="text-xs">▲</span>}
-              </Button>
-            </div>            {/* Questions List */}
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={toggleExpandCollapseAll}
+                >
+                  {anyExpanded ? 'Collapse' : 'Expand'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={toggleTimeSort}
+                  className="gap-1"
+                >
+                  Time Spent
+                  {timeSortOrder === 'desc' && <span className="text-xs">▼</span>}
+                  {timeSortOrder === 'asc' && <span className="text-xs">▲</span>}
+                </Button>
+              </div>
+            </div>
+
+            {/* Questions List */}
             <div className="space-y-8">
               {sortedGroups.map(group => (
                 <div key={`${group.moduleType}-${group.moduleNumber}`}>
@@ -1125,142 +1636,170 @@ export default function TestResultsPage() {
                     {group.moduleType === 'reading' ? 'Reading & Writing' : 'Mathematics'} - Module {group.moduleNumber}
                   </h3>
                   <div className="space-y-4">
-                    {group.questions.map((question, index) => (
-                      <Card key={question.id || index} className="overflow-hidden">
-                        <CardHeader 
-                          className="pb-3 cursor-pointer" 
-                          onClick={() => toggleExpanded(question.id || index.toString())}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                question.isUnanswered ? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200' :
-                                question.isCorrect ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
-                              }`}>
-                                {question.isUnanswered ? 'Unanswered' :
-                                 question.isCorrect ? 'Correct' : 'Incorrect'}
-                              </span>
-                              <CardTitle className="text-lg">
-                                Question {question.questionNumber}
-                              </CardTitle>
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              {formatTimeSpent(question.timeSpent || 0)}
-                            </div>
-                          </div>
-                        </CardHeader>
-                        {expandedQuestions.has(question.id || index.toString()) && (
-                          <CardContent>
-                            <div className="space-y-4">
-                              <div className="text-base mb-4">
-                                {question.contentColumns?.map((content, idx) => 
-                                  content ? (
-                                    <div key={idx} className={idx > 0 ? "mt-4" : ""}>
-                                      <RenderedContent content={content} testNumber={1} />
-                                    </div>
-                                  ) : null
-                                )}
+                    {group.questions.map((question) => {
+                      const questionKey = getQuestionKey(question)
+                      const enableFormatting = question.moduleType === 'reading'
+                      const contentColumns = question.contentColumns ?? []
+                      const hasContentColumns = contentColumns.length > 0
+
+                      return (
+                        <Card key={questionKey} className="overflow-hidden">
+                          <CardHeader
+                            className="pb-3 cursor-pointer"
+                            onClick={() => toggleExpanded(questionKey)}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                  question.isUnanswered ? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200' :
+                                  question.isCorrect ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+                                }`}>
+                                  {question.isUnanswered ? 'Unanswered' :
+                                   question.isCorrect ? 'Correct' : 'Incorrect'}
+                                </span>
+                                <CardTitle className="text-lg">
+                                  Question {question.questionNumber}
+                                </CardTitle>
                               </div>
-                              {/* Question Options */}
-                              {question.questionType === 'multiple-choice' && question.options && question.options.length > 0 && (
-                                <div className="space-y-2">
-                                  {question.options.map((option, optIndex) => {
-                                    const optionLetter = String.fromCharCode(65 + optIndex)
-                                    const isUserChoice = question.userAnswer === optionLetter
-                                    const correctAnswerIndex = question.correctAnswer.charCodeAt(0) - 65 // Convert A=0, B=1, etc.
-                                    const isCorrectChoice = optIndex === correctAnswerIndex
-                                    return (
-                                      <div
-                                        key={optIndex}
-                                        className={`p-3 rounded border ${
-                                          isCorrectChoice ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950' :
-                                          isUserChoice && !isCorrectChoice ? 'border-orange-500 bg-orange-50 dark:border-orange-400 dark:bg-orange-950' : 'border-gray-200 dark:border-gray-600'
-                                        }`}
-                                      >
-                                        <span className="font-medium">
-                                          {optionLetter}.{'  '}
-                                          <span className={
-                                            isCorrectChoice ? 'text-blue-700 dark:text-blue-300' :
-                                            isUserChoice && !isCorrectChoice ? 'text-orange-700 dark:text-orange-300' : 'text-gray-700 dark:text-gray-300'
-                                          }>
-                                            <RenderedContent content={option} testNumber={1} />
-                                          </span>
-                                        </span>
-                                        {isCorrectChoice && isUserChoice && <span className="ml-2 text-blue-600 dark:text-blue-400 text-sm">(Your Choice - Correct)</span>}
-                                        {isCorrectChoice && !isUserChoice && <span className="ml-2 text-blue-600 dark:text-blue-400 text-sm">(Correct)</span>}
-                                        {isUserChoice && !isCorrectChoice && <span className="ml-2 text-orange-600 dark:text-orange-400 text-sm">(Your Choice - Incorrect)</span>}
-                                      </div>
+                              <div className="text-sm text-muted-foreground">
+                                {formatTimeSpent(question.timeSpent || 0)}
+                              </div>
+                            </div>
+                          </CardHeader>
+                          {expandedQuestions.has(questionKey) && (
+                            <CardContent>
+                              <div className="space-y-4">
+                                <div className="text-base mb-4">
+                                  {hasContentColumns ? (
+                                    contentColumns.map((content, idx) =>
+                                      content ? (
+                                        <div key={`${questionKey}-content-${idx}`} data-content-index={idx}>
+                                          <RenderedContent
+                                            content={String(content)}
+                                            testNumber={1}
+                                            basePartIndex={idx * 100}
+                                            enableFormatting={enableFormatting}
+                                          />
+                                          {idx < contentColumns.length - 1 && <hr className="my-4" />}
+                                        </div>
+                                      ) : null
                                     )
-                                  })}
-                                </div>
-                              )}
-                              {/* Free Response Answer */}
-                              {question.questionType === 'free-response' && (
-                                <div className="space-y-2">
-                                  <div className={`p-3 rounded border ${
-                                    question.isCorrect ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950' : 'border-orange-500 bg-orange-50 dark:border-orange-400 dark:bg-orange-950'
-                                  }`}>
-                                    <div className="font-medium mb-2">Your Answer:</div>
-                                    <div className={
-                                      question.isCorrect ? 'text-blue-700 dark:text-blue-300' : 'text-orange-700 dark:text-orange-300'
-                                    }>
-                                      {question.userAnswer || 'No answer provided'}
+                                  ) : (
+                                    <div data-content-index="main">
+                                      <RenderedContent
+                                        content={String(question.questionText || '')}
+                                        testNumber={1}
+                                        basePartIndex={1000}
+                                        enableFormatting={enableFormatting}
+                                      />
                                     </div>
-                                    {question.isCorrect && <span className="ml-2 text-blue-600 dark:text-blue-400 text-sm">(Correct)</span>}
+                                  )}
+                                </div>
+                                {/* Question Options */}
+                                {question.questionType === 'multiple-choice' && question.options && question.options.length > 0 && (
+                                  <div className="space-y-2">
+                                    {question.options.map((option, optIndex) => {
+                                      const optionLetter = String.fromCharCode(65 + optIndex)
+                                      const isUserChoice = question.userAnswer === optionLetter
+                                      const correctAnswerIndex = question.correctAnswer.charCodeAt(0) - 65 // Convert A=0, B=1, etc.
+                                      const isCorrectChoice = optIndex === correctAnswerIndex
+                                      return (
+                                        <div
+                                          key={`${questionKey}-option-${optIndex}`}
+                                          className={`p-3 rounded border ${
+                                            isCorrectChoice ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950' :
+                                            isUserChoice && !isCorrectChoice ? 'border-orange-500 bg-orange-50 dark:border-orange-400 dark:bg-orange-950' : 'border-gray-200 dark:border-gray-600'
+                                          }`}
+                                        >
+                                          <span className="font-medium">
+                                            {optionLetter}.{'  '}
+                                            <span className={
+                                              isCorrectChoice ? 'text-blue-700 dark:text-blue-300' :
+                                              isUserChoice && !isCorrectChoice ? 'text-orange-700 dark:text-orange-300' : 'text-gray-700 dark:text-gray-300'
+                                            }>
+                                              <RenderedContent
+                                                content={String(option)}
+                                                testNumber={1}
+                                                enableFormatting={enableFormatting}
+                                              />
+                                            </span>
+                                          </span>
+                                          {isCorrectChoice && isUserChoice && <span className="ml-2 text-blue-600 dark:text-blue-400 text-sm">(Your Choice - Correct)</span>}
+                                          {isCorrectChoice && !isUserChoice && <span className="ml-2 text-blue-600 dark:text-blue-400 text-sm">(Correct)</span>}
+                                          {isUserChoice && !isCorrectChoice && <span className="ml-2 text-orange-600 dark:text-orange-400 text-sm">(Your Choice - Incorrect)</span>}
+                                        </div>
+                                      )
+                                    })}
                                   </div>
-                                  <div className="p-3 rounded border border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950">
-                                    <div className="font-medium mb-2">Correct Answer:</div>
-                                    <div className="text-blue-700 dark:text-blue-300">
-                                      {question.correctAnswer}
+                                )}
+                                {/* Free Response Answer */}
+                                {question.questionType === 'free-response' && (
+                                  <div className="space-y-2">
+                                    <div className={`p-3 rounded border ${
+                                      question.isCorrect ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950' : 'border-orange-500 bg-orange-50 dark:border-orange-400 dark:bg-orange-950'
+                                    }`}>
+                                      <div className="font-medium mb-2">Your Answer:</div>
+                                      <div className={
+                                        question.isCorrect ? 'text-blue-700 dark:text-blue-300' : 'text-orange-700 dark:text-orange-300'
+                                      }>
+                                        {question.userAnswer || 'No answer provided'}
+                                      </div>
+                                      {question.isCorrect && <span className="ml-2 text-blue-600 dark:text-blue-400 text-sm">(Correct)</span>}
+                                    </div>
+                                    <div className="p-3 rounded border border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950">
+                                      <div className="font-medium mb-2">Correct Answer:</div>
+                                      <div className="text-blue-700 dark:text-blue-300">
+                                        {question.correctAnswer}
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              )}
-                              <div className="flex justify-end">
-                                {(() => {
-                                  const videoStatus = requestedVideos.get(question.id || index.toString())
-                                  if (videoStatus === 'available') {
-                                    return (
-                                      <div className="w-full">
-                                        <div className="bg-gray-100 p-4 rounded border">
-                                          <p className="text-sm font-medium mb-2">Video Explanation</p>
-                                          <div className="aspect-video bg-gray-200 rounded flex items-center justify-center">
-                                            <p className="text-gray-500">Video player would appear here</p>
+                                )}
+                                <div className="flex justify-end">
+                                  {(() => {
+                                    const videoStatus = requestedVideos.get(questionKey)
+                                    if (videoStatus === 'available') {
+                                      return (
+                                        <div className="w-full">
+                                          <div className="bg-gray-100 p-4 rounded border">
+                                            <p className="text-sm font-medium mb-2">Video Explanation</p>
+                                            <div className="aspect-video bg-gray-200 rounded flex items-center justify-center">
+                                              <p className="text-gray-500">Video player would appear here</p>
+                                            </div>
                                           </div>
                                         </div>
-                                      </div>
-                                    )
-                                  } else if (videoStatus === 'pending') {
-                                    return (
-                                      <Button variant="outline" size="sm" disabled>
-                                        Video explanation pending
-                                      </Button>
-                                    )
-                                  } else {
-                                    return (
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => requestVideo(question.id || index.toString())}
-                                        disabled={remainingVideos === 0}
-                                      >
-                                        {remainingVideos === 0 ? (
-                                          <>
-                                            Request Video Explanation ( 20<Gem className="h-4 w-4 text-orange-500"/>)
-                                          </>
-                                        ) : (
-                                          `Request Video Explanation (${remainingVideos} Remaining)`
-                                        )}
-                                      </Button>
-                                    )
-                                  }
-                                })()}
+                                      )
+                                    } else if (videoStatus === 'pending') {
+                                      return (
+                                        <Button variant="outline" size="sm" disabled>
+                                          Video explanation pending
+                                        </Button>
+                                      )
+                                    } else {
+                                      return (
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => requestVideo(questionKey)}
+                                          disabled={remainingVideos === 0}
+                                        >
+                                          {remainingVideos === 0 ? (
+                                            <>
+                                              Request Video Explanation ( 20<Gem className="h-4 w-4 text-orange-500"/>)
+                                            </>
+                                          ) : (
+                                            `Request Video Explanation (${remainingVideos} Remaining)`
+                                          )}
+                                        </Button>
+                                      )
+                                    }
+                                  })()}
+                                </div>
                               </div>
-                            </div>
-                          </CardContent>
-                        )}
-                      </Card>
-                    ))}
+                            </CardContent>
+                          )}
+                        </Card>
+                      )
+                    })}
                   </div>
                 </div>
               ))}
@@ -1268,26 +1807,17 @@ export default function TestResultsPage() {
           </div>
         </div>
       </main>
-
-      <Dialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Score Submission</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to submit your score to the public leaderboard? 
-              Once submitted, your performance will be visible to other users.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex justify-center gap-2">
-            <Button variant="outline" onClick={() => setShowSubmitDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSubmitScore}>
-              Submit Score
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {showScrollTop && (
+        <Button
+          type="button"
+          size="icon"
+          onClick={scrollToTop}
+          aria-label="Scroll to top"
+          className="fixed bottom-8 right-8 z-40 h-12 w-12 rounded-full shadow-lg"
+        >
+          <ChevronUp className="h-5 w-5" />
+        </Button>
+      )}
     </div>
   )
 }
