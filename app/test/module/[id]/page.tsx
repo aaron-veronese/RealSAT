@@ -6,13 +6,13 @@ import { MathModuleRunner } from "@/components/test-module/MathModuleRunner"
 
 export default function TestModulePage() {
   const params = useParams()
-  const moduleId = Number(params.id)
-  // preserve deep link question param
   const searchParams = useSearchParams()
+  const moduleId = Number(params.id)
+  const testId = parseInt(searchParams.get('testId') || '1', 10)
   const qParam = searchParams.get("question")
 
   if (moduleId <= 2) {
-    return <EnglishModuleRunner moduleId={moduleId} />
+    return <EnglishModuleRunner moduleId={moduleId} testId={testId} />
   }
-  return <MathModuleRunner moduleId={moduleId} />
+  return <MathModuleRunner moduleId={moduleId} testId={testId} />
 }

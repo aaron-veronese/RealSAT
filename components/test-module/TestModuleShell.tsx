@@ -90,28 +90,22 @@ export function TestModuleShell(p: Props) {
           <Card className="max-w-4xl mx-auto">
             <CardContent className="p-6" onMouseUp={p.onSelectionHighlight}>
               <div ref={p.contentRef} className="space-y-4 mb-4">
-                {(p.currentQuestionData as any).contentColumns && (p.currentQuestionData as any).contentColumns.length > 0 ? (
-                  (p.currentQuestionData as any).contentColumns.map((content: any, index: number) => content && (
+                {(p.currentQuestionData as any).content && (p.currentQuestionData as any).content.length > 0 ? (
+                  (p.currentQuestionData as any).content.map((contentItem: any, index: number) => contentItem && (
                     <div key={index} data-content-index={index}>
                       <RenderedContent
-                        content={String(content)}
+                        content={String(contentItem.value || "")}
                         testNumber={1}
                         highlights={p.isEnglishModule ? p.highlights : []}
                         basePartIndex={index * 100}
                         enableFormatting={p.isEnglishModule}
                       />
-                      {index < (p.currentQuestionData as any).contentColumns.length - 1 && <hr className="my-4" />}
+                      {index < (p.currentQuestionData as any).content.length - 1 && <hr className="my-4" />}
                     </div>
                   ))
                 ) : (
-                  <div className="whitespace-pre-wrap" data-content-index="main">
-                    <RenderedContent
-                      content={String((p.currentQuestionData as any).content1 || "")}
-                      testNumber={1}
-                      highlights={p.isEnglishModule ? p.highlights : []}
-                      basePartIndex={1000}
-                      enableFormatting={p.isEnglishModule}
-                    />
+                  <div className="whitespace-pre-wrap text-muted-foreground" data-content-index="empty">
+                    No content available for this question.
                   </div>
                 )}
               </div>

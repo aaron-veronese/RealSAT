@@ -10,10 +10,10 @@ declare global {
   interface Window { Desmos?: any }
 }
 
-export function MathModuleRunner({ moduleId }: { moduleId: number }) {
+export function MathModuleRunner({ moduleId, testId }: { moduleId: number; testId: number }) {
   const searchParams = useSearchParams()
   const initialQuestion = searchParams.get("question") ? parseInt(searchParams.get("question")!) : 1
-  const base = useTestModuleBase(moduleId, initialQuestion)
+  const base = useTestModuleBase(moduleId, testId, initialQuestion)
 
   const {
     questions,

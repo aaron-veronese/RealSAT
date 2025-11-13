@@ -1,48 +1,28 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { BookOpen, Clock, Calculator } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { BookOpen, Calculator, Clock, FileText } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function NewTestPage() {
   const router = useRouter()
-  const [startMode, setStartMode] = useState<null | "full" | "rw" | "math">(null)
-  const testId = 1
+  const searchParams = useSearchParams()
+  const testId = parseInt(searchParams.get('testId') || '1', 10)
 
-  const beginFullTest = () => {
-    if (startMode) return
-    setStartMode("full")
-
-    setTimeout(() => {
-      router.push("/test/module/1/intro")
-    }, 1000)
+  const handleBeginTest = () => {
+    router.push(`/test/module/1/intro?testId=${testId}`)
   }
 
-  const beginReadingOnly = () => {
-    if (startMode) return
-    setStartMode("rw")
-
-    setTimeout(() => {
-      router.push("/test/module/1/intro?scope=reading")
-    }, 600)
-  }
-
-  const beginMathOnly = () => {
-    if (startMode) return
-    setStartMode("math")
-
-    setTimeout(() => {
-      router.push("/test/module/3/intro?scope=math")
-    }, 600)
+  const handleJumpToMath = () => {
+    router.push(`/test/module/3/intro?testId=${testId}`)
   }
 
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="max-w-5xl mx-auto flex h-16 items-center justify-between">
+        <div className="max-w-5xl mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-2 font-bold">
             <BookOpen className="h-5 w-5" />
             <span>SAT Practice</span>
@@ -51,153 +31,100 @@ export default function NewTestPage() {
         </div>
       </header>
       <main className="flex-1 py-6">
-        <div className="max-w-5xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Test {testId}</h1>
-          <p className="text-muted-foreground">Begin a full SAT practice test with 4 modules</p>
-        </div>
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="mb-8 text-center">
+            <h1 className="text-4xl font-bold tracking-tight mb-3">Test {testId}</h1>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              The SAT consists of two sections: Reading & Writing (modules 1 & 2) and Math (modules 3 & 4).
+              You can complete the full test or jump directly to the Math section.
+            </p>
+          </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary">
-                  <BookOpen className="h-4 w-4" />
+          <div className="grid gap-8 md:grid-cols-2 max-w-4xl mx-auto mb-8">
+            <Card className="border-2">
+              <CardHeader>
+                <CardTitle className="text-2xl flex items-center gap-2">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                    <BookOpen className="h-5 w-5" />
+                  </div>
+                  Reading & Writing
+                </CardTitle>
+                <CardDescription className="text-base">Modules 1 & 2</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <span>64 minutes total (32 min per module)</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <span>54 questions (27 per module)</span>
+                  </div>
                 </div>
-                Module 1
-              </CardTitle>
-              <CardDescription>Reading & Writing</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-sm">
-                <p className="flex items-center gap-2 mb-1">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span>32 minutes</span>
+                <p className="text-sm text-muted-foreground pt-2">
+                  Tests your ability to read, analyze, and edit texts across literature, history, social studies, and science.
                 </p>
-                <p>27 multiple choice questions</p>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary">
-                  <BookOpen className="h-4 w-4" />
+            <Card className="border-2">
+              <CardHeader>
+                <CardTitle className="text-2xl flex items-center gap-2">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400">
+                    <Calculator className="h-5 w-5" />
+                  </div>
+                  Mathematics
+                </CardTitle>
+                <CardDescription className="text-base">Modules 3 & 4</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <span>70 minutes total (35 min per module)</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <span>44 questions (22 per module)</span>
+                  </div>
                 </div>
-                Module 2
-              </CardTitle>
-              <CardDescription>Reading & Writing</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-sm">
-                <p className="flex items-center gap-2 mb-1">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span>32 minutes</span>
+                <p className="text-sm text-muted-foreground pt-2">
+                  Covers algebra, advanced math, problem-solving, data analysis, geometry, and trigonometry.
                 </p>
-                <p>27 multiple choice questions</p>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary">
-                  <Calculator className="h-4 w-4" />
-                </div>
-                Module 3
-              </CardTitle>
-              <CardDescription>Mathematics</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-sm">
-                <p className="flex items-center gap-2 mb-1">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span>35 minutes</span>
-                </p>
-                <p>22 questions (some fill-in-the-blank)</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary">
-                  <Calculator className="h-4 w-4" />
-                </div>
-                Module 4
-              </CardTitle>
-              <CardDescription>Mathematics</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-sm">
-                <p className="flex items-center gap-2 mb-1">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span>35 minutes</span>
-                </p>
-                <p>22 questions (MCQ & free-response)</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Test Information</CardTitle>
-            <CardDescription>What to expect during your practice test</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <h3 className="font-medium mb-2">Test Structure</h3>
-              <p className="text-sm text-muted-foreground">
-                The digital SAT consists of four modules: two Reading & Writing and two Math modules. All modules are
-                presented with consistent difficulty.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-medium mb-2">Timing</h3>
-              <p className="text-sm text-muted-foreground">
-                The total test time is 134 minutes (2 hours and 14 minutes). You'll have 32 minutes for each Reading &
-                Writing module and 35 minutes for each Math module.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-medium mb-2">Scoring</h3>
-              <p className="text-sm text-muted-foreground">
-                Your score will range from 400-1600, with each section (Reading & Writing and Math) scored from 200-800.
-                Your performance on both modules in each section contributes to your section score.
-              </p>
-            </div>
-          </CardContent>
-          <CardFooter className="flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-4">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-2xl mx-auto">
             <Button
-              onClick={beginReadingOnly}
-              disabled={Boolean(startMode)}
               size="lg"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white sm:flex-1"
+              onClick={handleBeginTest}
+              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8"
             >
-              {startMode === "rw" ? "Preparing..." : "Reading & Writing Only"}
+              <BookOpen className="mr-2 h-5 w-5" />
+              Begin Test
             </Button>
             <Button
-              onClick={beginMathOnly}
-              disabled={Boolean(startMode)}
               size="lg"
-              className="w-full bg-orange-400 hover:bg-orange-500 text-white sm:flex-1"
+              onClick={handleJumpToMath}
+              variant="outline"
+              className="w-full sm:w-auto border-orange-600 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950 px-8"
             >
-              {startMode === "math" ? "Preparing..." : "Mathematics Only"}
+              <Calculator className="mr-2 h-5 w-5" />
+              Jump to Math Section
             </Button>
+          </div>
+
+          <div className="mt-8 flex justify-center">
             <Button
-              onClick={beginFullTest}
-              disabled={Boolean(startMode)}
-              size="lg"
-              className="w-full bg-sky-500 hover:bg-sky-600 text-white sm:flex-1"
+              variant="ghost"
+              onClick={() => router.push('/')}
+              className="gap-2"
             >
-              {startMode === "full" ? "Preparing test..." : "Begin Full Practice Test"}
+              Return to Dashboard
             </Button>
-          </CardFooter>
-        </Card>
+          </div>
         </div>
       </main>
     </div>

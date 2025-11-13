@@ -73,7 +73,7 @@ export function RenderedContent({
                         key={i}
                         className="border border-gray-300 dark:border-gray-600 px-4 py-2 text-left font-semibold text-gray-900 dark:text-gray-100"
                       >
-                        {header}
+                        {enableFormatting ? applyTextFormatting(header) : header}
                       </th>
                     ))}
                   </tr>
@@ -86,7 +86,7 @@ export function RenderedContent({
                           key={j}
                           className="border border-gray-300 dark:border-gray-600 px-4 py-2 text-gray-900 dark:text-gray-100"
                         >
-                          {cell}
+                          {enableFormatting ? applyTextFormatting(cell) : cell}
                         </td>
                       ))}
                     </tr>
@@ -117,36 +117,98 @@ export function RenderedContent({
   )
 }
 
-// Apply bold (**text**), italic (*text*), underline (_text_)
+// Apply bold (**text**), italic (*text*), underline (_text_) with support for nesting
 function applyTextFormatting(text: string): (string | JSX.Element)[] {
   const parts: (string | JSX.Element)[] = []
-  let remaining = text
   let key = 0
 
-  // Pattern: **bold**, *italic*, _underline_
-  const formatRegex = /(\*\*[^*]+\*\*|\*[^*]+\*|_[^_]+_)/g
-  let match
+  // Process underline first (outer layer)
+  const underlineRegex = /_([^_]+)_/g
   let lastIndex = 0
+  let match
 
-  while ((match = formatRegex.exec(remaining)) !== null) {
+  while ((match = underlineRegex.exec(text)) !== null) {
+    // Add text before match
     if (match.index > lastIndex) {
-      parts.push(remaining.slice(lastIndex, match.index))
+      parts.push(...processInnerFormatting(text.slice(lastIndex, match.index), key))
     }
 
-    const matched = match[0]
-    if (matched.startsWith('**') && matched.endsWith('**')) {
-      parts.push(<strong key={key++}>{matched.slice(2, -2)}</strong>)
-    } else if (matched.startsWith('*') && matched.endsWith('*')) {
-      parts.push(<em key={key++}>{matched.slice(1, -1)}</em>)
-    } else if (matched.startsWith('_') && matched.endsWith('_')) {
-      parts.push(<u key={key++}>{matched.slice(1, -1)}</u>)
-    }
+    // Process content inside underline for bold/italic
+    const innerContent = processInnerFormatting(match[1], key)
+    parts.push(<u key={key++}>{innerContent}</u>)
 
-    lastIndex = match.index + matched.length
+    lastIndex = match.index + match[0].length
   }
 
-  if (lastIndex < remaining.length) {
-    parts.push(remaining.slice(lastIndex))
+  // Add remaining text
+  if (lastIndex < text.length) {
+    parts.push(...processInnerFormatting(text.slice(lastIndex), key))
+  }
+
+  return parts.length > 0 ? parts : [text]
+}
+
+// Process bold and italic formatting
+function processInnerFormatting(text: string, startKey: number): (string | JSX.Element)[] {
+  const parts: (string | JSX.Element)[] = []
+  let key = startKey + 1000
+
+  // Process bold first
+  const boldRegex = /\*\*([^*]+)\*\*/g
+  const segments: Array<{ start: number; end: number; type: 'bold' | 'italic'; content: string }> = []
+  let match: RegExpExecArray | null
+
+  while ((match = boldRegex.exec(text)) !== null) {
+    segments.push({
+      start: match.index,
+      end: match.index + match[0].length,
+      type: 'bold',
+      content: match[1]
+    })
+  }
+
+  // Process italic (but not if it's part of bold **)
+  const italicRegex = /(?<!\*)\*([^*]+)\*(?!\*)/g
+  while ((match = italicRegex.exec(text)) !== null) {
+    // Check if this overlaps with a bold segment
+    const overlaps = segments.some(s => 
+      (match!.index >= s.start && match!.index < s.end) ||
+      (match!.index + match![0].length > s.start && match!.index + match![0].length <= s.end)
+    )
+    if (!overlaps) {
+      segments.push({
+        start: match.index,
+        end: match.index + match[0].length,
+        type: 'italic',
+        content: match[1]
+      })
+    }
+  }
+
+  // Sort segments by start position
+  segments.sort((a, b) => a.start - b.start)
+
+  // Build the result
+  let lastIndex = 0
+  for (const segment of segments) {
+    // Add text before this segment
+    if (segment.start > lastIndex) {
+      parts.push(text.slice(lastIndex, segment.start))
+    }
+
+    // Add formatted segment
+    if (segment.type === 'bold') {
+      parts.push(<strong key={key++}>{segment.content}</strong>)
+    } else {
+      parts.push(<em key={key++}>{segment.content}</em>)
+    }
+
+    lastIndex = segment.end
+  }
+
+  // Add remaining text
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex))
   }
 
   return parts.length > 0 ? parts : [text]

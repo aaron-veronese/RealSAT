@@ -5,13 +5,32 @@ I want to add a test user to the database (myself) so I can try recording an act
 Here's how I would like the full app flow to work:
 
 Landing Page: app/page.tsx
-- Title: {current user.name}'s Dashboard 
+- Title: {current user.name}'s Dashboard
 - 3 tabs in a card (exactly like app/test/results/page.tsx except it's for ALL present test_attempts): Available tests, Leaderboard, Your Progress
     - Available Tests: Queries questions table for unique test_id and excludes all test_id entries in test_attempts table for the current user_id with test_status=COMPLETE. if there is a test_attempts for the current user with status=IN_PROGRESS, then those test_ids will reflect the status and allow the user to continue that test, if a unique test_id exists in the questions table, and there is no entry in test_attempts for the current user with that test_id, then it will appear as a new test to begin. clicking on a test here will take the user to test?id={test_id}/new/page.tsx
     - Leaderboard: Tracks each user's high score for any test. queries the test_attempts table for all entries with test_status=COMPLETE, will only show the highest score for each user, so each users.name will only be present in the list once with their highest score in the last Week, Month, All Time (filterable in the top right of leaderboard, queries test_attempts by last_modified). table includes columns: rank, test_id, user_name, total score, reading score, math score, module 1 raw, module 2 raw, module 3 raw, module 4 raw, total time spent. all sortable and dynamically fetched from test_results table.
     - Your Progress: Same chart as on app/test/results/page.tsx. queries test_results for the current user_id. displays all of the user's test_results with test_status=COMPLETE. entries are ordered from left to right by the last_modified date in db and spread evenly from left to right margin. reuse the same table from test/results/page.tsx
-- Another area below. exactly like the question review section on app/test/results/page.tsx except includes a scrollable list above it of all completed test ids. queries test_attempts table for all attempts for the current user_id with test_status=COMPLETE. if a requested video explanation is present for a question id in one of these tests, show some kind of indication that there are new videos waiting to be watched. might need to add a new db table for which users requested which videos and if they have viewed them yet.
+- Another area below called "Completed Tests". exactly like the question review section on app/test/results/page.tsx except includes a scrollable list above it of all completed test ids. queries test_attempts table for all attempts for the current user_id with test_status=COMPLETE. if a requested video explanation is present for a question id in one of these tests, show some kind of indication that there are new videos waiting to be watched. might need to add a new db table for which users requested which videos and if they have viewed them yet.
     -under the scrollable table of completed tests, if a test is selected, show the full filterable question results exactly like app/test/results/page.tsx
 
-Test Taking data flow:
-
+Test Taking data and ux flow:
+1. From dashboard(app/page.tsx): User selects a new test or in progress test from the Available Tests tab
+2. User is directed to the corresponding /test?{test_id}/new/page.tsx
+3. Query test_attempts db to see if there's an entry for the current user and current test_id
+3a. User has no existing test_attempts for the selected test_id:
+    - Sees "Begin Full Test", "Reading & Writing Only", "Math Only"
+3b. User has an existing test_attempts for the selected test_id:
+    - Sees "Continue Test" button
+4. User begins a test or continues, user is taken to test?id={}/module?id={id of module depending on button selected}/intro/page.tsx
+5. User clicks Begin Module, All question and answer choice content for the selected test_id and module_number is loaded from supabase questions table into local storage
+6. first question appears and they enter the test taking flow for that module. any answer selected in the UI gets stored in local storage in a jsonb that matches the test_attempts format. same with time spent on each question.
+7. Once user presses "Submit Module", a confirmation modal appears. Once they confirm, the answers and times stored in local storage are updated to the test_attempts table in the row of the current attempt. if no other attempt exists for the current test run, a new row is created. the current module's status gets updated to COMPLETE. The backend then compares the submitted answers to the answer key in questions.answers and populates the question statuses for that module in test_attempts
+8. The next module in the test appears at its respective test?id={}/module?id={moduleid}/intro/page.tsx
+9. User has the option to begin next module or leave back to dashboard.
+10. user completes all modules of a test. the final time is added up from all 4 module answer times and sent to test_attempts.total_time, test_attempts.test_status is set to COMPLETE, test_attempts.reading_score, test_attempts.math_score, and test_attempts.total_score are updated for that test_attempts.id
+11. User is taken to test?id={test_id}/results/page.tsx
+12. Score card is queried from test_attempts.module jsonb array
+13. leaderboard is queried from test_attempts for only the current test_id
+14. your progress is queried from test_attempts for all of the current user's attempts with test_status=COMPLETE, sorted by last_modified.
+15. Question review section is queried from test_attempts.module for each question's status, user answer, time taken, and correct answer. Video explanations are linked to the questions table
+16. User returns to dashboard and the newly completed test should appear in the "Completed Tests" table and can be clicked to be reviewed again.

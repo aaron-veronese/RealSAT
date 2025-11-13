@@ -1,16 +1,26 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Clock, BookOpen, Calculator, Brain, ArrowRight } from "lucide-react"
+import { Clock, BookOpen, Calculator, Brain, ArrowRight, Home } from "lucide-react"
+import { getCurrentUserId } from "@/lib/auth"
+import { getQuestionsByModule } from "@/lib/supabase/questions"
+import { getTestAttempt, createTestAttempt } from "@/lib/supabase/test-attempts"
+import type { ModuleQuestion } from "@/types/db"
 
 export default function ModuleIntroPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const moduleId = Number(params.id)
+  const testId = parseInt(searchParams.get('testId') || '1', 10)
+  const userId = getCurrentUserId()
   const [isStarting, setIsStarting] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [showRWResults, setShowRWResults] = useState(false)
 
   const getModuleTitle = () => {
     switch (moduleId) {
@@ -68,20 +78,86 @@ export default function ModuleIntroPage() {
     }
   }
 
+  // Load questions and initialize module data
+  useEffect(() => {
+    loadModuleData()
+  }, [moduleId, testId])
+
+  const loadModuleData = async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+
+      // For module 3, check if modules 1 and 2 are completed
+      if (moduleId === 3) {
+        const { data: attempt } = await getTestAttempt(userId, testId)
+        if (attempt && attempt.modules) {
+          const hasModule1 = attempt.modules.module_1?.completed
+          const hasModule2 = attempt.modules.module_2?.completed
+          setShowRWResults(hasModule1 && hasModule2)
+        }
+      }
+
+      // Get questions for this module
+      const { data: questions, error: questionsError } = await getQuestionsByModule(testId, moduleId)
+      
+      if (questionsError) {
+        setError("Failed to load questions")
+        console.error("Error loading questions:", questionsError)
+        return
+      }
+
+      if (!questions || questions.length === 0) {
+        setError("No questions found for this module")
+        return
+      }
+
+      // Initialize localStorage for this module with question data
+      // Note: We don't create a test_attempt here - that only happens on first module submission
+      const moduleKey = `test-${testId}-module-${moduleId}`
+      const moduleData = {
+        module_number: moduleId,
+        questions: questions.map((q: any) => ({
+          id: q.id,
+          question_number: q.question_number,
+          content: q.content, // Array of {type, value}
+          answers: q.answers, // Array of {type, value}
+          correct_answer: q.correct_answer,
+          section: q.section,
+          user_answer: null,
+          time_spent: 0,
+          status: 'UNANSWERED' as const,
+          flagged: false
+        })),
+        completed: false,
+        total_time: 0
+      }
+
+      localStorage.setItem(moduleKey, JSON.stringify(moduleData))
+
+      setIsLoading(false)
+    } catch (err) {
+      console.error("Error in loadModuleData:", err)
+      setError("An unexpected error occurred")
+      setIsLoading(false)
+    }
+  }
+
   const handleBeginModule = () => {
     setIsStarting(true)
 
-    // Initialize the module timer in session storage
+    // Initialize the module timer end time
     const moduleTime = moduleId <= 2 ? 32 * 60 : 35 * 60 // Time in seconds
     const startTime = Date.now()
     const endTime = startTime + moduleTime * 1000
 
-    // Store the end time rather than remaining seconds for more accurate timing
-    sessionStorage.setItem(`module-${moduleId}-timer-end`, endTime.toString())
+    // Store the end time and start time
+    const timerKey = `test-${testId}-module-${moduleId}-timer`
+    localStorage.setItem(timerKey, JSON.stringify({ endTime, startTime }))
 
     // Navigate to the first question
     setTimeout(() => {
-      router.push(`/test/module/${moduleId}`)
+      router.push(`/test/module/${moduleId}?testId=${testId}&question=1`)
     }, 1000)
   }
 
@@ -128,6 +204,35 @@ export default function ModuleIntroPage() {
       document.removeEventListener("keydown", handleKeyDown)
     }
   }, [])
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md text-center">
+          <CardContent className="py-8">
+            <div className="text-2xl font-bold mb-2">Loading Module...</div>
+            <p className="text-muted-foreground">Please wait while we prepare your test</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md text-center border-destructive">
+          <CardContent className="py-8">
+            <div className="text-2xl font-bold mb-2 text-destructive">Error</div>
+            <p className="text-muted-foreground mb-4">{error}</p>
+            <Button onClick={() => router.push(`/test/new?testId=${testId}`)}>
+              Return to Test Start
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
@@ -182,7 +287,29 @@ export default function ModuleIntroPage() {
             </ul>
           </div>
         </CardContent>
-        <CardFooter className="flex justify-end">
+        <CardFooter className="flex justify-between">
+          <Button
+            size="lg"
+            onClick={() => router.push('/')}
+            variant="outline"
+            className="gap-2 bg-orange-400 hover:bg-orange-500 text-white border-orange-400 hover:border-orange-500"
+          >
+            <Home className="h-4 w-4" />
+            Return to Dashboard
+          </Button>
+          
+          {/* Module 3: Show R&W Results button if modules 1 and 2 are complete */}
+          {moduleId === 3 && showRWResults && (
+            <Button
+              size="lg"
+              onClick={() => router.push(`/test/results?testId=${testId}&section=rw`)}
+              variant="outline"
+              className="gap-2 bg-sky-500 hover:bg-sky-600 text-white border-sky-500 hover:border-sky-600"
+            >
+              Reading & Writing Results
+            </Button>
+          )}
+          
           <Button
             size="lg"
             onClick={handleBeginModule}

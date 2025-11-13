@@ -5,10 +5,10 @@ import { useTestModuleBase } from "./useTestModuleBase"
 import type { TestQuestion } from "@/lib/types"
 import { TestModuleShell } from "./TestModuleShell"
 
-export function EnglishModuleRunner({ moduleId }: { moduleId: number }) {
+export function EnglishModuleRunner({ moduleId, testId }: { moduleId: number; testId: number }) {
   const searchParams = useSearchParams()
   const initialQuestion = searchParams.get("question") ? parseInt(searchParams.get("question")!) : 1
-  const base = useTestModuleBase(moduleId, initialQuestion)
+  const base = useTestModuleBase(moduleId, testId, initialQuestion)
 
   const {
     questions,

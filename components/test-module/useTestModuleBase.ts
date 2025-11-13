@@ -1,6 +1,5 @@
 "use client"
 import { useState, useEffect, useCallback, useRef } from "react"
-import { generateModuleQuestions } from "@/lib/test-data"
 import type { TestQuestion } from "@/lib/types"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/use-toast"
@@ -29,7 +28,7 @@ export interface UseTestModuleBase {
   isFreeResponse: boolean
 }
 
-export function useTestModuleBase(moduleId: number, initialQuestion: number): UseTestModuleBase {
+export function useTestModuleBase(moduleId: number, testId: number, initialQuestion: number): UseTestModuleBase {
   const router = useRouter()
   const { toast } = useToast()
 
@@ -57,58 +56,99 @@ export function useTestModuleBase(moduleId: number, initialQuestion: number): Us
 
   // load / generate questions
   useEffect(() => {
-    const timerEnd = sessionStorage.getItem(`module-${moduleId}-timer-end`)
-    if (!timerEnd) {
-      router.push(`/test/module/${moduleId}/intro`)
+    const timerKey = `test-${testId}-module-${moduleId}-timer`
+    const timerData = localStorage.getItem(timerKey)
+    if (!timerData) {
+      router.push(`/test/module/${moduleId}/intro?testId=${testId}`)
       return
     }
 
-    const saved = sessionStorage.getItem(`module-${moduleId}-questions`)
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved)
-        setQuestions(parsed.map((q: any) => ({ ...q, timeSpent: q.timeSpent || 0 })))
-        return
-      } catch {}
+    // Load module data from localStorage (initialized by intro page)
+    const moduleKey = `test-${testId}-module-${moduleId}`
+    const moduleData = localStorage.getItem(moduleKey)
+    
+    if (!moduleData) {
+      router.push(`/test/module/${moduleId}/intro?testId=${testId}`)
+      return
     }
 
-    const moduleType = isEnglishModule ? "reading" : "math"
-    let previousModuleQuestions: TestQuestion[] | undefined
-    if (moduleId === 2 || moduleId === 4) {
-      const prevId = moduleId === 2 ? 1 : 3
-      const prevJson = sessionStorage.getItem(`module-${prevId}-questions`)
-      if (prevJson) {
-        try { previousModuleQuestions = JSON.parse(prevJson) } catch {}
-      }
-    }
+    try {
+      const parsed = JSON.parse(moduleData)
+      
+      // Convert localStorage data to TestQuestion format
+      const questionsWithState = parsed.questions.map((q: any) => {
+        // Determine question type from answers array
+        // If answers exist and any have a value, it's multiple choice (unless section is MATH and only 1 answer)
+        const hasAnswers = q.answers && q.answers.length > 0
+        const isFreeResponseMath = q.section === 'MATH' && hasAnswers && q.answers.length === 1
+        const questionType = hasAnswers && !isFreeResponseMath
+          ? "multiple-choice" as const
+          : "free-response" as const
 
-    // Fetch questions from Supabase
-    generateModuleQuestions(
-      moduleType,
-      moduleId,
-      totalQuestions,
-      new Set(),
-      previousModuleQuestions,
-    ).then((generated) => {
-      const withState = generated.map(q => ({ ...q, flagged: false, userAnswer: "", timeSpent: q.timeSpent || 0 }))
-      setQuestions(withState)
-      sessionStorage.setItem(`module-${moduleId}-questions`, JSON.stringify(withState))
-    }).catch((error) => {
-      console.error("Error loading questions:", error)
-      toast({
-        title: "Error loading questions",
-        description: "Failed to load questions from the database.",
-        variant: "destructive",
+        // Extract options for multiple choice questions
+        const options = questionType === "multiple-choice" 
+          ? q.answers.map((a: any) => a.value) 
+          : undefined
+
+        return {
+          id: q.id,
+          moduleId: moduleId.toString(),
+          questionNumber: q.question_number,
+          questionText: "", // Not used - we use content array instead
+          questionType,
+          options,
+          correctAnswer: q.correct_answer,
+          userAnswer: q.user_answer || "",
+          flagged: q.flagged || false,
+          difficulty: "medium" as const,
+          timeSpent: q.time_spent || 0,
+          content: q.content, // Array of {type, value}
+          answers: q.answers, // Array of {type, value}
+          section: q.section
+        }
       })
-    })
-  }, [moduleId, router, totalQuestions, isEnglishModule, toast])
 
-  // persist changes
+      setQuestions(questionsWithState)
+    } catch (err) {
+      console.error("Error parsing module data:", err)
+      router.push(`/test/module/${moduleId}/intro?testId=${testId}`)
+    }
+  }, [moduleId, testId, router, toast])
+
+  // persist changes to localStorage in real-time
   useEffect(() => {
     if (questions.length > 0) {
-      sessionStorage.setItem(`module-${moduleId}-questions`, JSON.stringify(questions))
+      const moduleKey = `test-${testId}-module-${moduleId}`
+      const moduleData = localStorage.getItem(moduleKey)
+      
+      if (moduleData) {
+        try {
+          const parsed = JSON.parse(moduleData)
+          // Update questions with current state, preserving all original fields
+          parsed.questions = questions.map((q) => {
+            // Find the matching question in parsed data by question_number
+            const originalQ = parsed.questions.find((pq: any) => pq.question_number === q.questionNumber)
+            
+            if (!originalQ) {
+              console.error(`No original question found for question ${q.questionNumber}`)
+              return null
+            }
+            
+            return {
+              ...originalQ, // Start with all original data
+              user_answer: q.userAnswer || null,
+              time_spent: q.timeSpent || 0,
+              status: q.userAnswer ? 'ANSWERED' : 'UNANSWERED',
+              flagged: q.flagged || false
+            }
+          }).filter(Boolean)
+          localStorage.setItem(moduleKey, JSON.stringify(parsed))
+        } catch (err) {
+          console.error("Error updating localStorage:", err)
+        }
+      }
     }
-  }, [questions, moduleId])
+  }, [questions, moduleId, testId])
 
   // answered count
   useEffect(() => {
@@ -121,10 +161,15 @@ export function useTestModuleBase(moduleId: number, initialQuestion: number): Us
   // timer
   useEffect(() => {
     const calcLeft = () => {
-      const raw = sessionStorage.getItem(`module-${moduleId}-timer-end`)
+      const timerKey = `test-${testId}-module-${moduleId}-timer`
+      const raw = localStorage.getItem(timerKey)
       if (!raw) return null
-      const end = parseInt(raw)
-      return Math.max(0, Math.floor((end - Date.now()) / 1000))
+      try {
+        const { endTime } = JSON.parse(raw)
+        return Math.max(0, Math.floor((endTime - Date.now()) / 1000))
+      } catch {
+        return null
+      }
     }
     setTimeLeft(calcLeft())
     const interval = setInterval(() => {
@@ -136,7 +181,7 @@ export function useTestModuleBase(moduleId: number, initialQuestion: number): Us
       }
     }, 1000)
     return () => clearInterval(interval)
-  }, [moduleId]) // eslint-disable-line
+  }, [moduleId, testId]) // eslint-disable-line
 
   const handleTimeUp = useCallback(() => {
     toast({
@@ -144,12 +189,12 @@ export function useTestModuleBase(moduleId: number, initialQuestion: number): Us
       description: "Your module has been automatically submitted.",
       variant: "destructive",
     })
-    sessionStorage.removeItem(`module-${moduleId}-timer-end`)
+    localStorage.removeItem(`test-${testId}-module-${moduleId}-timer`)
     setTimeout(() => {
-      if (moduleId < 4) router.push(`/test/module/${moduleId + 1}/intro`)
-      else router.push(`/test/results`)
+      if (moduleId < 4) router.push(`/test/module/${moduleId + 1}/intro?testId=${testId}`)
+      else router.push(`/test/results?testId=${testId}`)
     }, 1200)
-  }, [moduleId, router, toast])
+  }, [moduleId, testId, router, toast])
 
   // per-question time accumulation
   useEffect(() => {
@@ -172,9 +217,9 @@ export function useTestModuleBase(moduleId: number, initialQuestion: number): Us
   // update URL when question changes
   useEffect(() => {
     if (questions.length > 0) {
-      router.replace(`/test/module/${moduleId}?question=${currentQuestion}`, { scroll: false })
+      router.replace(`/test/module/${moduleId}?testId=${testId}&question=${currentQuestion}`, { scroll: false })
     }
-  }, [currentQuestion, moduleId, router, questions.length])
+  }, [currentQuestion, moduleId, testId, router, questions.length])
 
   const updateAnswer = (answer: string) => {
     setQuestions(prev => prev.map((q, i) => i === currentQuestion - 1 ? { ...q, userAnswer: answer } : q))
@@ -191,8 +236,8 @@ export function useTestModuleBase(moduleId: number, initialQuestion: number): Us
     if (currentQuestion > 1) setCurrentQuestion(q => q - 1)
   }
   const goToReview = () => {
-    sessionStorage.setItem(`module-${moduleId}-last-question`, currentQuestion.toString())
-    router.push(`/test/module/${moduleId}/review`)
+    localStorage.setItem(`test-${testId}-module-${moduleId}-last-question`, currentQuestion.toString())
+    router.push(`/test/module/${moduleId}/review?testId=${testId}`)
   }
 
   const formatClock = (s: number) => {
@@ -204,18 +249,18 @@ export function useTestModuleBase(moduleId: number, initialQuestion: number): Us
   const currentQuestionData =
     questions.length > 0
       ? questions[currentQuestion - 1]
-      : {
+      : ({
           id: "",
           moduleId: "",
           questionNumber: 1,
           questionText: "",
-          questionType: "multiple-choice",
+          questionType: "multiple-choice" as "multiple-choice" | "free-response",
           options: ["","","",""],
           correctAnswer: "",
           userAnswer: "",
           flagged: false,
           difficulty: "medium",
-        }
+        } as TestQuestion & { flagged?: boolean })
 
   const isFreeResponse = isMathModule && currentQuestionData.questionType === "free-response"
 
