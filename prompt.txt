@@ -1,0 +1,17 @@
+LET'S GOOO. Questions are being loaded from the database during the test flow. i see the requests in the api log now.
+
+I want to add a test user to the database (myself) so I can try recording an actual test_attempt in the database.
+
+Here's how I would like the full app flow to work:
+
+Landing Page: app/page.tsx
+- Title: {current user.name}'s Dashboard 
+- 3 tabs in a card (exactly like app/test/results/page.tsx except it's for ALL present test_attempts): Available tests, Leaderboard, Your Progress
+    - Available Tests: Queries questions table for unique test_id and excludes all test_id entries in test_attempts table for the current user_id with test_status=COMPLETE. if there is a test_attempts for the current user with status=IN_PROGRESS, then those test_ids will reflect the status and allow the user to continue that test, if a unique test_id exists in the questions table, and there is no entry in test_attempts for the current user with that test_id, then it will appear as a new test to begin. clicking on a test here will take the user to test?id={test_id}/new/page.tsx
+    - Leaderboard: Tracks each user's high score for any test. queries the test_attempts table for all entries with test_status=COMPLETE, will only show the highest score for each user, so each users.name will only be present in the list once with their highest score in the last Week, Month, All Time (filterable in the top right of leaderboard, queries test_attempts by last_modified). table includes columns: rank, test_id, user_name, total score, reading score, math score, module 1 raw, module 2 raw, module 3 raw, module 4 raw, total time spent. all sortable and dynamically fetched from test_results table.
+    - Your Progress: Same chart as on app/test/results/page.tsx. queries test_results for the current user_id. displays all of the user's test_results with test_status=COMPLETE. entries are ordered from left to right by the last_modified date in db and spread evenly from left to right margin. reuse the same table from test/results/page.tsx
+- Another area below. exactly like the question review section on app/test/results/page.tsx except includes a scrollable list above it of all completed test ids. queries test_attempts table for all attempts for the current user_id with test_status=COMPLETE. if a requested video explanation is present for a question id in one of these tests, show some kind of indication that there are new videos waiting to be watched. might need to add a new db table for which users requested which videos and if they have viewed them yet.
+    -under the scrollable table of completed tests, if a test is selected, show the full filterable question results exactly like app/test/results/page.tsx
+
+Test Taking data flow:
+

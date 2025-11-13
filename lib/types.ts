@@ -32,7 +32,8 @@ export interface TestQuestion {
   userAnswer?: string
   flagged?: boolean
   difficulty?: "easy" | "medium" | "hard"
-  contentColumns?: (string | null | undefined)[] // Add this line
+  contentColumns?: string[] // Array of content strings
+  tags?: string[] // Array of tags
   timeSpent?: number // Time spent on this question in seconds
 }
 

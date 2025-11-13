@@ -82,17 +82,26 @@ export function useTestModuleBase(moduleId: number, initialQuestion: number): Us
       }
     }
 
-    const generated = generateModuleQuestions(
+    // Fetch questions from Supabase
+    generateModuleQuestions(
       moduleType,
       moduleId,
       totalQuestions,
       new Set(),
       previousModuleQuestions,
-    )
-    const withState = generated.map(q => ({ ...q, flagged: false, userAnswer: "", timeSpent: q.timeSpent || 0 }))
-    setQuestions(withState)
-    sessionStorage.setItem(`module-${moduleId}-questions`, JSON.stringify(withState))
-  }, [moduleId, router, totalQuestions, isEnglishModule])
+    ).then((generated) => {
+      const withState = generated.map(q => ({ ...q, flagged: false, userAnswer: "", timeSpent: q.timeSpent || 0 }))
+      setQuestions(withState)
+      sessionStorage.setItem(`module-${moduleId}-questions`, JSON.stringify(withState))
+    }).catch((error) => {
+      console.error("Error loading questions:", error)
+      toast({
+        title: "Error loading questions",
+        description: "Failed to load questions from the database.",
+        variant: "destructive",
+      })
+    })
+  }, [moduleId, router, totalQuestions, isEnglishModule, toast])
 
   // persist changes
   useEffect(() => {

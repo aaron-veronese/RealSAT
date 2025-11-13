@@ -1,61 +1,47 @@
-import { test1Data } from "./question-data/test1"
 import type { TestQuestion } from "./types"
+import type { DBQuestion } from "@/types/db"
+import { getQuestionsByModule } from "./supabase/questions"
 
-export function generateModuleQuestions(
+export async function generateModuleQuestions(
   moduleType: "reading" | "math",
   moduleNumber: number,
   count: number,
   usedQuestionIds: Set<string>,
   previousModuleQuestions?: TestQuestion[],
-): TestQuestion[] {
-  // Filter questions by module number from test1Data
-  const availableQuestions = test1Data
-    .filter((q) => q.module === moduleNumber)
-    .map((q) => {
-      // DEBUG: Log raw data for question 6
-      if (test1Data.indexOf(q) + 1 === 6) {
-        console.log("RAW Q6 content1:", q.content1)
-        console.log("RAW Q6 answerC:", q.answerC)
-      }
+): Promise<TestQuestion[]> {
+  // Fetch questions from Supabase for the given module
+  const { data: dbQuestions, error } = await getQuestionsByModule(89, moduleNumber)
+  
+  if (error || !dbQuestions) {
+    console.error("Error fetching questions:", error)
+    return []
+  }
 
-      // Combine all content fields into contentColumns array
-      const contentColumns = [
-        q.content1,
-        q.content2,
-        q.content3,
-        q.content4,
-        q.content5,
-      ].filter((content) => content && String(content).trim() !== "")
+  // Transform DBQuestion to TestQuestion format
+  const availableQuestions = dbQuestions.map((q: DBQuestion) => {
+    // Combine all content blocks into contentColumns array
+    const contentColumns = q.content.map(block => block.value)
 
-      // Determine question type based on whether it has answer options
-      const isFreeResponse = !q.answerA && !q.answerB && !q.answerC && !q.answerD
+    // Determine question type based on whether it has answer options
+    const isFreeResponse = q.answers.length === 0
       
-      const result = {
-        id: `test1-m${q.module}-q${test1Data.indexOf(q) + 1}`,
-        moduleId: String(q.module),
-        questionNumber: test1Data.indexOf(q) + 1,
-        questionText: q.content1 || "",
-        contentColumns,
-        questionType: isFreeResponse ? "free-response" : "multiple-choice",
-        options: isFreeResponse
-          ? []
-          : [q.answerA, q.answerB, q.answerC, q.answerD]
-              .filter((a) => a !== undefined && a !== null && String(a).trim() !== "")
-              .map((a) => String(a)),
-        correctAnswer: String(q.correctAnswer),
-        userAnswer: "",
-        difficulty: "medium",
-        tags: [q.tag1, q.tag2, q.tag3, q.tag4].filter((t) => t && String(t).trim() !== ""),
-        timeSpent: 0,
-      } as TestQuestion
+    const result: TestQuestion = {
+      id: q.id,
+      moduleId: String(q.module_number),
+      questionNumber: q.question_number,
+      questionText: q.content[0]?.value || "",
+      contentColumns,
+      questionType: isFreeResponse ? "free-response" : "multiple-choice",
+      options: isFreeResponse ? [] : q.answers.map(a => a.value),
+      correctAnswer: q.correct_answer,
+      userAnswer: "",
+      difficulty: q.difficulty ? (q.difficulty === 1 ? "easy" : q.difficulty === 2 ? "medium" : "hard") : "medium",
+      tags: q.tags || [],
+      timeSpent: 0,
+    }
 
-      // DEBUG: Log transformed data
-      if (result.questionNumber === 6) {
-        console.log("TRANSFORMED Q6:", result)
-      }
-
-      return result
-    })
+    return result
+  })
 
   return availableQuestions.slice(0, count)
 }
