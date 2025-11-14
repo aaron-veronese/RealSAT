@@ -285,16 +285,87 @@ export async function getGlobalLeaderboard(timeFilter?: 'week' | 'month' | 'all'
  * Get unique test IDs from questions table
  */
 export async function getAvailableTests() {
-  const { data, error } = await supabase
-    .from('questions')
-    .select('test_id')
-    .order('test_id', { ascending: true });
+  // Use RPC function to get distinct test IDs efficiently
+  const { data, error } = await supabase.rpc('get_distinct_test_ids');
 
-  if (error) return { data: null, error };
+  if (error) {
+    // Fallback to regular query if RPC fails
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from('questions')
+      .select('test_id')
+      .order('test_id', { ascending: true })
+      .range(0, 9999);
+    
+    if (fallbackError) return { data: null, error: fallbackError };
+    
+    const uniqueTestIds = [...new Set(fallbackData?.map((q: { test_id: number }) => q.test_id) || [])];
+    return { data: uniqueTestIds, error: null };
+  }
 
-  // Get unique test IDs
-  const uniqueTestIds = [...new Set(data?.map((q: { test_id: number }) => q.test_id) || [])];
-  return { data: uniqueTestIds, error: null };
+  return { data: data?.map((row: any) => row.test_id) || [], error: null };
+}
+
+/**
+ * Get practice tests (tests not completed by user) with module status
+ */
+export async function getPracticeTests(userId: string) {
+  // Get all available test IDs
+  const { data: allTests, error: testsError } = await getAvailableTests();
+  if (testsError || !allTests) return { data: null, error: testsError };
+
+  // Get all test attempts for user (including incomplete ones)
+  const { data: allAttempts, error: attemptsError } = await supabase
+    .from('test_attempts')
+    .select('*')
+    .eq('user_id', userId);
+
+  if (attemptsError) return { data: null, error: attemptsError };
+
+  // Filter out only completed tests
+  const completedTestIds = new Set(
+    allAttempts?.filter(a => a.test_status === 'COMPLETE').map(t => t.test_id) || []
+  );
+  
+  const practiceTestIds = (allTests as number[]).filter(id => !completedTestIds.has(id));
+
+  // Create a map of test attempts for easy lookup
+  const attemptsMap = new Map(allAttempts?.map(a => [a.test_id, a]) || []);
+
+  // Build result with module status
+  const practiceTests = practiceTestIds.map(testId => {
+    const attempt = attemptsMap.get(testId);
+    
+    // Calculate total time by summing module-level total_time from all modules
+    let calculatedTotalTime = 0;
+    if (attempt?.modules) {
+      for (let i = 1; i <= 4; i++) {
+        const moduleKey = `module_${i}`;
+        const module = attempt.modules[moduleKey];
+        if (module?.total_time) {
+          calculatedTotalTime += module.total_time;
+        }
+      }
+    }
+    
+    // Determine if test is in progress (has at least one completed module)
+    const hasProgress = attempt?.modules && Object.values(attempt.modules).some((m: any) => m?.completed);
+    
+    return {
+      test_id: testId,
+      modules: attempt?.modules || {},
+      total_time: calculatedTotalTime,
+      has_progress: hasProgress,
+    };
+  });
+
+  // Sort: in-progress tests first (by test_id), then not-started tests (by test_id)
+  practiceTests.sort((a, b) => {
+    if (a.has_progress && !b.has_progress) return -1;
+    if (!a.has_progress && b.has_progress) return 1;
+    return a.test_id - b.test_id;
+  });
+
+  return { data: practiceTests, error: null };
 }
 
 /**

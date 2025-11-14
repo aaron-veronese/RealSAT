@@ -297,21 +297,28 @@ export default function ModuleReviewPage() {
         localStorage.removeItem(moduleKey)
         localStorage.removeItem(timerKey)
 
-        // Navigation logic: always go to next module intro (which has conditional buttons)
+        // Navigation logic: go to next incomplete module intro, or results page
         setTimeout(() => {
-          // After Module 1: Go to Module 2 intro
+          // After Module 1: Always go to Module 2 intro (Module 2 will never be complete before Module 1)
           if (moduleId === 1) {
             router.push(`/test/module/2/intro?testId=${testId}`)
           }
-          // After Module 2: Go to Module 3 intro (which shows R&W results button if M1&M2 complete)
+          // After Module 2: Go to Module 3 intro if not completed, else Module 4, else Full Results
           else if (moduleId === 2) {
-            router.push(`/test/module/3/intro?testId=${testId}`)
+            if (!updatedModules.module_3?.completed) {
+              router.push(`/test/module/3/intro?testId=${testId}`)
+            } else if (!updatedModules.module_4?.completed) {
+              router.push(`/test/module/4/intro?testId=${testId}`)
+            } else {
+              // Both math modules complete -> Full results
+              router.push(`/test/results?testId=${testId}`)
+            }
           }
-          // After Module 3: Go to Module 4 intro
+          // After Module 3: Always go to Module 4 intro (Module 4 will never be complete before Module 3)
           else if (moduleId === 3) {
             router.push(`/test/module/4/intro?testId=${testId}`)
           }
-          // After Module 4: Check if modules 1 & 2 exist for full results, else math results
+          // After Module 4: Full Results (if modules 1 and 2 complete) → Math Results (if module 1 or 2 incomplete)
           else if (moduleId === 4) {
             const hasReadingModules = updatedModules.module_1?.completed && updatedModules.module_2?.completed
             if (hasReadingModules) {
