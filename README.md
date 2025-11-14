@@ -6,6 +6,34 @@ A full-stack web application providing an authentic Digital SAT testing experien
 
 RealSAT is a modern SAT preparation platform that replicates the official Digital SAT format, featuring adaptive testing algorithms, detailed performance tracking, and competitive leaderboards. Built with Next.js 14 and Supabase, it delivers a seamless, responsive testing experience.
 
+## 📸 Screenshots
+
+### Test Taking Experience
+![Module Introduction](./screenshots/module-intro.png)
+*Module introduction screen with instructions and time limits*
+
+![Reading Question](./screenshots/reading-question.png)
+*Reading & Writing question with clean, distraction-free interface*
+
+![Math Question with Calculator](./screenshots/math-calculator.png)
+*Math question with integrated Desmos graphing calculator*
+
+![Module Review](./screenshots/module-review.png)
+*Module review screen showing answered and flagged questions*
+
+### Results Dashboard
+![Score Overview](./screenshots/results-overview.png)
+*Comprehensive score breakdown with section scores and performance metrics*
+
+![Question Review](./screenshots/question-review.png)
+*Detailed question review with filters and answer explanations*
+
+![Progress Chart](./screenshots/progress-chart.png)
+*Interactive progress visualization showing performance trends over time*
+
+![Leaderboard](./screenshots/leaderboard.png)
+*Competitive leaderboard with sortable columns and user comparison*
+
 ## ✨ Key Features
 
 ### 📝 Authentic Testing Experience
