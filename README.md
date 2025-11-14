@@ -9,27 +9,36 @@ RealSAT is a modern SAT preparation platform that replicates the official Digita
 ## 📸 Screenshots
 
 ### Test Taking Experience
+
 ![Module Introduction](./screenshots/module-intro.png)
 *Module introduction screen with instructions and time limits*
+
 
 ![Reading Question](./screenshots/reading-question.png)
 *Reading & Writing question with clean, distraction-free interface*
 
+
 ![Math Question with Calculator](./screenshots/math-calculator.png)
 *Math question with integrated Desmos graphing calculator*
+
 
 ![Module Review](./screenshots/module-review.png)
 *Module review screen showing answered and flagged questions*
 
+
 ### Results Dashboard
+
 ![Score Overview](./screenshots/results-overview.png)
 *Comprehensive score breakdown with section scores and performance metrics*
+
 
 ![Question Review](./screenshots/question-review.png)
 *Detailed question review with filters and answer explanations*
 
+
 ![Progress Chart](./screenshots/progress-chart.png)
 *Interactive progress visualization showing performance trends over time*
+
 
 ![Leaderboard](./screenshots/leaderboard.png)
 *Competitive leaderboard with sortable columns and user comparison*
@@ -119,54 +128,6 @@ RealSAT/
     ├── populate_leaderboard.sql
     └── full_db.json
 ```
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Node.js 18+ and npm
-- Supabase account and project
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/RealSAT.git
-   cd RealSAT
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Set up environment variables**
-   
-   Create a `.env.local` file in the root directory:
-   ```env
-   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-   ```
-
-4. **Initialize Supabase database**
-   
-   Import the database schema from `supabase/full_db.json` or run the SQL scripts to create:
-   - `users` table
-   - `questions` table
-   - `test_attempts` table
-
-5. **Populate sample data (optional)**
-   ```bash
-   # Run the populate_leaderboard.sql script in Supabase SQL Editor
-   ```
-
-6. **Start the development server**
-   ```bash
-   npm run dev
-   ```
-
-7. **Open your browser**
-   
-   Navigate to [http://localhost:3000](http://localhost:3000)
 
 ## 📊 Database Schema
 
