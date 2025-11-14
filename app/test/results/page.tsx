@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -179,6 +180,8 @@ export default function TestResultsPage() {
   const [modules, setModules] = useState<TestModule[]>([])
   const { resolvedTheme } = useTheme()
   const [userResults, setUserResults] = useState<StoredProgressEntry[]>([])
+  // New: DB fetch state
+  const [dbError, setDbError] = useState<string | null>(null)
 
   // Animation states
   const [animatedTotal, setAnimatedTotal] = useState(0)
@@ -194,10 +197,19 @@ export default function TestResultsPage() {
   const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set())
   const [requestedVideos, setRequestedVideos] = useState<Map<string, 'pending' | 'available'>>(new Map())
   const [timeSortOrder, setTimeSortOrder] = useState<'desc' | 'asc' | 'none'>('none')
-  const [leaderboardSort, setLeaderboardSort] = useState<{column: string, direction: 'asc' | 'desc'}>({column: 'score', direction: 'desc'})
   const [leaderboardScrollTop, setLeaderboardScrollTop] = useState(0)
   const [activeTab, setActiveTab] = useState<'score' | 'leaderboard' | 'progress'>('score')
   const [showScrollTop, setShowScrollTop] = useState(false)
+  const searchParams = useSearchParams()
+  const sectionParam = (searchParams?.get('section') || 'full').toLowerCase() as 'full' | 'rw' | 'math'
+  const testIdParam = searchParams?.get('testId') ? parseInt(searchParams.get('testId')!) : null
+  const isRWView = sectionParam === 'rw'
+  const isMathView = sectionParam === 'math'
+  const isFullView = sectionParam === 'full'
+  const [leaderboardSort, setLeaderboardSort] = useState<{column: string, direction: 'asc' | 'desc'}>({
+    column: isRWView ? 'readingScore' : isMathView ? 'mathScore' : 'score',
+    direction: 'desc'
+  })
 
   const scrollToTop = useCallback(() => {
     if (typeof window === "undefined") return
@@ -421,7 +433,9 @@ export default function TestResultsPage() {
     return latest?.testId ?? null
   }, [modules, userResults])
 
-  const headerTitle = primaryTestId ? `Test ${primaryTestId} Results` : "Test Results"
+  const headerTitle = isFullView
+    ? (primaryTestId ? `Test ${primaryTestId} Results` : "Test Results")
+    : (isRWView ? 'Reading & Writing Results' : 'Math Results')
 
 
   const leaderboardColumnWidths = {
@@ -437,20 +451,46 @@ export default function TestResultsPage() {
     width: leaderboardColumnWidths[key],
     minWidth: leaderboardColumnWidths[key],
   })
-  const renderLeaderboardColgroup = () => (
-    <colgroup>
-      <col style={getColumnStyle('rank')} />
-      <col style={getColumnStyle('name')} />
-      <col style={getColumnStyle('totalScore')} />
-      <col style={getColumnStyle('readingScore')} />
-      <col style={getColumnStyle('mathScore')} />
-      <col style={getColumnStyle('module')} />
-      <col style={getColumnStyle('module')} />
-      <col style={getColumnStyle('module')} />
-      <col style={getColumnStyle('module')} />
-      <col style={getColumnStyle('time')} />
-    </colgroup>
-  )
+  const renderLeaderboardColgroup = () => {
+    if (isRWView) {
+      return (
+        <colgroup>
+          <col style={getColumnStyle('rank')} />
+          <col style={getColumnStyle('name')} />
+          <col style={getColumnStyle('readingScore')} />
+          <col style={getColumnStyle('module')} />
+          <col style={getColumnStyle('module')} />
+          <col style={getColumnStyle('time')} />
+        </colgroup>
+      )
+    }
+    if (isMathView) {
+      return (
+        <colgroup>
+          <col style={getColumnStyle('rank')} />
+          <col style={getColumnStyle('name')} />
+          <col style={getColumnStyle('mathScore')} />
+          <col style={getColumnStyle('module')} />
+          <col style={getColumnStyle('module')} />
+          <col style={getColumnStyle('time')} />
+        </colgroup>
+      )
+    }
+    return (
+      <colgroup>
+        <col style={getColumnStyle('rank')} />
+        <col style={getColumnStyle('name')} />
+        <col style={getColumnStyle('totalScore')} />
+        <col style={getColumnStyle('readingScore')} />
+        <col style={getColumnStyle('mathScore')} />
+        <col style={getColumnStyle('module')} />
+        <col style={getColumnStyle('module')} />
+        <col style={getColumnStyle('module')} />
+        <col style={getColumnStyle('module')} />
+        <col style={getColumnStyle('time')} />
+      </colgroup>
+    )
+  }
   const getSortIndicator = (column: string) =>
     leaderboardSort.column === column && leaderboardSort.direction === 'asc' ? '↑' : '↓'
   const renderSortableHeaderContent = (label: string, column: string) => (
@@ -467,7 +507,22 @@ export default function TestResultsPage() {
     </span>
   )
 
-  // Mock leaderboard data for this test
+  // Leaderboard data from database
+  const [dbLeaderboardData, setDbLeaderboardData] = useState<Array<{
+    id: string
+    name: string
+    score: number
+    readingScore: number
+    mathScore: number
+    timeSpent: number
+    module1: number
+    module2: number
+    module3: number
+    module4: number
+    isCurrentUser: boolean
+  }>>([])
+
+  // Mock leaderboard data for this test (fallback)
   const mockLeaderboardData = [
     {
       id: "user-1",
@@ -764,12 +819,13 @@ export default function TestResultsPage() {
   // Only submit if all 4 modules are present
 
   // Calculate ranks based on current sort column and direction
+  const allLeaderboardEntries = dbLeaderboardData.length > 0 ? dbLeaderboardData : mockLeaderboardData
   const sortedForRanking = currentUserData ?
-    [...mockLeaderboardData, currentUserData].sort((a, b) => {
+    [...allLeaderboardEntries, currentUserData].sort((a, b) => {
       const aVal = a[leaderboardSort.column as keyof typeof a] as number
       const bVal = b[leaderboardSort.column as keyof typeof b] as number
       return leaderboardSort.direction === 'desc' ? bVal - aVal : aVal - bVal
-    }) : mockLeaderboardData.sort((a, b) => {
+    }) : allLeaderboardEntries.sort((a, b) => {
       const aVal = a[leaderboardSort.column as keyof typeof a] as number
       const bVal = b[leaderboardSort.column as keyof typeof b] as number
       return leaderboardSort.direction === 'desc' ? bVal - aVal : aVal - bVal
@@ -816,91 +872,263 @@ export default function TestResultsPage() {
     setLeaderboardScrollTop(e.currentTarget.scrollTop)
   }
 
+  // Fetch leaderboard data
   useEffect(() => {
-    // Clear the test-in-progress flag when viewing results
-    sessionStorage.removeItem("test-in-progress")
-
-    // Calculate the test score based on the completed modules
-    const calculateScore = () => {
-      // In a real app, we would load the test data from a database
-      // For this demo, we'll create a mock test with the modules from session storage
-      const mockTest: Test = {
-        id: "test-1",
-        startedAt: new Date(),
-        modules: [],
-      }
-
-      // Try to reconstruct the modules from session storage
-      const modules: TestModule[] = []
-
-      for (let i = 1; i <= 4; i++) {
-        const moduleQuestions = sessionStorage.getItem(`module-${i}-questions`)
-        if (moduleQuestions) {
-          const questions = JSON.parse(moduleQuestions)
-          modules.push({
-            id: `module-${i}`,
-            testId: mockTest.id,
-            moduleNumber: i,
-            moduleType: i <= 2 ? "reading" : "math",
-            isAdaptive: i === 2 || i === 4,
+    const fetchLeaderboard = async () => {
+      if (!testIdParam) return
+      
+      try {
+        const { getLeaderboard } = await import("@/lib/supabase/test-attempts")
+        const { getCurrentUserId } = await import("@/lib/auth")
+        const { calculateTestScore } = await import("@/lib/scoring")
+        
+        const currentUserId = getCurrentUserId()
+        const { data, error } = await getLeaderboard(testIdParam)
+        
+        if (error || !data) {
+          console.error('Error fetching leaderboard:', error)
+          return
+        }
+        
+        // Helper function to match answers (same as in main useEffect)
+        const answersMatch = (userAnswer: string, correctAnswer: string, isFreeResponse: boolean): boolean => {
+          if (!userAnswer || userAnswer.trim() === '') return false
+          
+          if (isFreeResponse) {
+            try {
+              const userVal = parseFloat(userAnswer.replace(/[^\d.-]/g, ''))
+              const correctVal = parseFloat(correctAnswer.replace(/[^\d.-]/g, ''))
+              
+              if (isNaN(userVal) || isNaN(correctVal)) {
+                return userAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase()
+              }
+              
+              const tolerance = 0.0001
+              return Math.abs(userVal - correctVal) < tolerance
+            } catch {
+              return userAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase()
+            }
+          }
+          
+          return userAnswer.trim() === correctAnswer.trim()
+        }
+        
+        // Process each test attempt to calculate scores
+        const processedData = data.map((attempt: any) => {
+          const dbModules = attempt.modules || {}
+          
+          // Helper function to count correct answers
+          const countCorrect = (moduleNum: number) => {
+            const moduleKey = `module_${moduleNum}`
+            const module = dbModules[moduleKey]
+            if (!module || !module.questions) return 0
+            
+            return module.questions.filter((q: any) => {
+              const isFreeResponse = !q.options || q.options.length === 0
+              return answersMatch(q.user_answer || '', q.correct_answer, isFreeResponse)
+            }).length
+          }
+          
+          // Calculate total time spent
+          const totalTime = Object.values(dbModules).reduce((total: number, mod: any) => {
+            if (!mod.questions) return total
+            return total + mod.questions.reduce((sum: number, q: any) => sum + (q.time_spent || 0), 0)
+          }, 0)
+          
+          // Build modules array for scoring
+          const modulesForScoring = Object.entries(dbModules).map(([key, mod]: [string, any]) => ({
+            id: key,
+            testId: String(attempt.test_id),
+            moduleNumber: mod.module_number,
+            moduleType: mod.module_number <= 2 ? "reading" : "math",
+            isAdaptive: mod.module_number === 2 || mod.module_number === 4,
             startedAt: new Date(),
             completedAt: new Date(),
-            questions,
-          })
-        }
-      }
-
-      // If we have modules, calculate the score
-      if (modules.length > 0) {
-        mockTest.modules = modules
-        const score = calculateTestScore(modules)
-        setTestScore(score)
-        setModules(modules) // Set modules to state
-
-        // Log time spent per question
-        modules.forEach(module => {
-          console.log(`Module ${module.moduleNumber} questions time spent:`)
-          module.questions.forEach(q => {
-            console.log(`Question ${q.questionNumber}: ${q.timeSpent || 0} seconds`)
-          })
+            questions: (mod.questions || []).map((q: any) => ({
+              correctAnswer: q.correct_answer,
+              userAnswer: q.user_answer,
+              options: q.options || [],
+            }))
+          }))
+          
+          const score = calculateTestScore(modulesForScoring as any)
+          
+          return {
+            id: attempt.user_id,
+            name: attempt.user_id === currentUserId ? "ThongJuice" : `User${attempt.user_id.slice(0, 8)}`,
+            score: score.total,
+            readingScore: score.readingWriting.scaledScore,
+            mathScore: score.math.scaledScore,
+            timeSpent: totalTime,
+            module1: countCorrect(1),
+            module2: countCorrect(2),
+            module3: countCorrect(3),
+            module4: countCorrect(4),
+            isCurrentUser: attempt.user_id === currentUserId,
+          }
         })
-
-        // Calculate individual module raw scores
-        const moduleRawScores = [
-          modules.find(m => m.moduleNumber === 1)?.questions.filter(q => {
-            const isFreeResponse = !q.options || q.options.length === 0
-            return answersMatch(q.userAnswer || '', q.correctAnswer, isFreeResponse)
-          }).length || 0,
-          modules.find(m => m.moduleNumber === 2)?.questions.filter(q => {
-            const isFreeResponse = !q.options || q.options.length === 0
-            return answersMatch(q.userAnswer || '', q.correctAnswer, isFreeResponse)
-          }).length || 0,
-          modules.find(m => m.moduleNumber === 3)?.questions.filter(q => {
-            const isFreeResponse = !q.options || q.options.length === 0
-            return answersMatch(q.userAnswer || '', q.correctAnswer, isFreeResponse)
-          }).length || 0,
-          modules.find(m => m.moduleNumber === 4)?.questions.filter(q => {
-            const isFreeResponse = !q.options || q.options.length === 0
-            return answersMatch(q.userAnswer || '', q.correctAnswer, isFreeResponse)
-          }).length || 0
-        ]
-
-        // Start animations
-        animateScores(score, moduleRawScores)
-      }
-
-      setIsLoading(false)
-
-      // Clean up any other test-related session storage items
-      for (let i = 1; i <= 4; i++) {
-        sessionStorage.removeItem(`module-${i}-timer-end`)
-        // Don't remove the questions as we need them for the results page
-        // sessionStorage.removeItem(`module-${i}-questions`)
+        
+        setDbLeaderboardData(processedData)
+      } catch (err) {
+        console.error('Error processing leaderboard:', err)
       }
     }
+    
+    fetchLeaderboard()
+  }, [testIdParam])
 
-    calculateScore()
-  }, [])
+  useEffect(() => {
+    // Clear the test-in-progress flag when viewing results
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("test-in-progress")
+    }
+
+    // Fetch test_attempts from Supabase
+    const fetchTestAttemptFromDB = async () => {
+      setIsLoading(true);
+      setDbError(null);
+      try {
+        // Import auth module to get current user ID
+        const { getCurrentUserId } = await import("@/lib/auth");
+        const userId = getCurrentUserId();
+        
+        // Get testId from URL params, fallback to 1
+        const testId = testIdParam || 1;
+        
+        console.log('Fetching test attempt for:', { userId, testId, section: sectionParam });
+        
+        // Import getTestAttempt dynamically to avoid SSR issues
+        const { getTestAttempt } = await import("@/lib/supabase/test-attempts");
+        const { data, error } = await getTestAttempt(userId, testId);
+        
+        console.log('Test attempt fetch result:', { data, error });
+        
+        if (error || !data) {
+          setDbError(error?.message || "No test attempt found for this user and test ID.");
+          setIsLoading(false);
+          return;
+        }
+        // Parse modules from DBTestAttempt
+        const dbModules = data.modules || {};
+        
+        console.log('Raw DB modules:', dbModules);
+        
+        // Get the module numbers we need based on section
+        const moduleNumbers = isRWView ? [1, 2] : isMathView ? [3, 4] : [1, 2, 3, 4];
+        
+        // Import supabase client
+        const { supabase } = await import("@/lib/supabase/client");
+        
+        // Fetch full question data from questions table for these modules
+        const { data: questionsData, error: questionsError } = await supabase
+          .from('questions')
+          .select('*')
+          .eq('test_id', testId)
+          .in('module_number', moduleNumbers)
+          .order('module_number')
+          .order('question_number');
+        
+        console.log('Questions data from DB:', questionsData, questionsError);
+        
+        if (questionsError) {
+          console.error('Error fetching questions:', questionsError);
+        }
+        
+        // Create a map of questions by module and question number
+        const questionsMap = new Map<string, any>();
+        if (questionsData) {
+          questionsData.forEach((q: any) => {
+            const key = `${q.module_number}-${q.question_number}`;
+            questionsMap.set(key, q);
+          });
+        }
+        
+        // Convert DB modules to TestModule[], filtering by section if needed
+        const parsedModules: TestModule[] = Object.entries(dbModules)
+          .filter(([key, mod]: [string, any]) => {
+            // Filter modules based on section view
+            if (isRWView) return mod.module_number === 1 || mod.module_number === 2;
+            if (isMathView) return mod.module_number === 3 || mod.module_number === 4;
+            return true; // Full view shows all modules
+          })
+          .map(([key, mod]: [string, any]) => {
+            return {
+              id: key,
+              testId: String(data.test_id),
+              moduleNumber: mod.module_number,
+              moduleType: mod.module_number <= 2 ? "reading" : "math",
+              isAdaptive: mod.module_number === 2 || mod.module_number === 4,
+              startedAt: new Date(),
+              completedAt: new Date(),
+              questions: (mod.questions || []).map((q: any, idx: number) => {
+                // Get full question data from questions table
+                const questionKey = `${mod.module_number}-${q.question_number}`;
+                const fullQuestion = questionsMap.get(questionKey);
+                
+                // Extract options from the answers array in the database
+                const options = fullQuestion?.answers?.map((ans: any) => ans.value) || [];
+                
+                return {
+                  id: `${key}-q${idx+1}`,
+                  moduleId: key,
+                  questionNumber: q.question_number,
+                  questionText: fullQuestion?.content?.[0]?.value || "",
+                  questionType: options.length > 0 ? "multiple-choice" : "free-response",
+                  options: options,
+                  correctAnswer: q.correct_answer,
+                  userAnswer: q.user_answer,
+                  flagged: false,
+                  difficulty: undefined,
+                  contentColumns: fullQuestion?.content?.map((c: any) => c.value) || [],
+                  tags: fullQuestion?.tags || [],
+                  timeSpent: q.time_spent || 0,
+                  content: fullQuestion?.content || [],
+                  answers: fullQuestion?.answers || [],
+                  section: fullQuestion?.section || (mod.module_number <= 2 ? "READING" : "MATH"),
+                };
+              })
+            };
+          });
+        
+        console.log('Parsed modules:', parsedModules);
+        
+        if (parsedModules.length === 0) {
+          setDbError(`No ${sectionParam === 'rw' ? 'Reading & Writing' : sectionParam === 'math' ? 'Math' : ''} modules found for this test.`);
+          setIsLoading(false);
+          return;
+        }
+        setModules(parsedModules);
+        // Calculate score
+        const score = calculateTestScore(parsedModules);
+        setTestScore(score);
+        // Animate scores
+        const moduleRawScores = [
+          parsedModules.find((m: any) => m.moduleNumber === 1)?.questions.filter((q: any) => {
+            const isFreeResponse = !q.options || q.options.length === 0;
+            return answersMatch(q.userAnswer || '', q.correctAnswer, isFreeResponse);
+          }).length || 0,
+          parsedModules.find((m: any) => m.moduleNumber === 2)?.questions.filter((q: any) => {
+            const isFreeResponse = !q.options || q.options.length === 0;
+            return answersMatch(q.userAnswer || '', q.correctAnswer, isFreeResponse);
+          }).length || 0,
+          parsedModules.find((m: any) => m.moduleNumber === 3)?.questions.filter((q: any) => {
+            const isFreeResponse = !q.options || q.options.length === 0;
+            return answersMatch(q.userAnswer || '', q.correctAnswer, isFreeResponse);
+          }).length || 0,
+          parsedModules.find((m: any) => m.moduleNumber === 4)?.questions.filter((q: any) => {
+            const isFreeResponse = !q.options || q.options.length === 0;
+            return answersMatch(q.userAnswer || '', q.correctAnswer, isFreeResponse);
+          }).length || 0
+        ];
+        animateScores(score, moduleRawScores);
+        setIsLoading(false);
+      } catch (err: any) {
+        setDbError(err?.message || "Unknown error fetching test attempt.");
+        setIsLoading(false);
+      }
+    };
+    fetchTestAttemptFromDB();
+  }, [testIdParam])
 
   // Animation function
   const animateScores = (score: TestScore, rawScores: number[]) => {
@@ -911,9 +1139,12 @@ export default function TestResultsPage() {
     const incrementMath = score.math.scaledScore / steps
     const incrementModules = rawScores.map(s => s / steps)
     const incrementProgressBars = rawScores.map(s => s / steps) // Same as modules for now
-    // Each section is half the circle (125.6 units), so score/800 * 125.6
-    const incrementReadingDash = ((score.readingWriting.scaledScore / 800) * 125.6) / steps
-    const incrementMathDash = ((score.math.scaledScore / 800) * 125.6) / steps
+    // For section views: full circle (251.2 units), so score/800 * 251.2
+    // For full view: half circle (125.6 units), so score/800 * 125.6
+    const readingCircleLength = isRWView ? 251.2 : 125.6
+    const mathCircleLength = isMathView ? 251.2 : 125.6
+    const incrementReadingDash = ((score.readingWriting.scaledScore / 800) * readingCircleLength) / steps
+    const incrementMathDash = ((score.math.scaledScore / 800) * mathCircleLength) / steps
 
     let current = 0
     const timer = setInterval(() => {
@@ -932,27 +1163,34 @@ export default function TestResultsPage() {
         setAnimatedMath(score.math.scaledScore)
         setAnimatedModuleScores(rawScores)
         setAnimatedProgressBars(rawScores)
-        setAnimatedReadingDash((score.readingWriting.scaledScore / 800) * 125.6)
-        setAnimatedMathDash((score.math.scaledScore / 800) * 125.6)
+        setAnimatedReadingDash((score.readingWriting.scaledScore / 800) * readingCircleLength)
+        setAnimatedMathDash((score.math.scaledScore / 800) * mathCircleLength)
         clearInterval(timer)
       }
     }, duration / steps)
   }
 
   // Get all questions with their module info
-  const allQuestions = modules.flatMap(module =>
-    module.questions.map((q, qIndex) => {
-      const isFreeResponse = !q.options || q.options.length === 0
-      return {
-        ...q,
-        moduleNumber: module.moduleNumber,
-        moduleType: module.moduleType,
-        isCorrect: answersMatch(q.userAnswer || '', q.correctAnswer, isFreeResponse),
-        isUnanswered: !q.userAnswer || q.userAnswer.trim() === '',
-        questionNumber: qIndex + 1,
-      }
+  const allQuestions = modules
+    .filter(module => {
+      // Filter modules based on section view
+      if (isRWView) return module.moduleNumber === 1 || module.moduleNumber === 2
+      if (isMathView) return module.moduleNumber === 3 || module.moduleNumber === 4
+      return true // Full view shows all modules
     })
-  )
+    .flatMap(module =>
+      module.questions.map((q, qIndex) => {
+        const isFreeResponse = !q.options || q.options.length === 0
+        return {
+          ...q,
+          moduleNumber: module.moduleNumber,
+          moduleType: module.moduleType,
+          isCorrect: answersMatch(q.userAnswer || '', q.correctAnswer, isFreeResponse),
+          isUnanswered: !q.userAnswer || q.userAnswer.trim() === '',
+          questionNumber: qIndex + 1,
+        }
+      })
+    )
 
   const getQuestionKey = (question: typeof allQuestions[number]) =>
     question.id || `${question.moduleType}-${question.moduleNumber}-${question.questionNumber}`
@@ -989,6 +1227,13 @@ export default function TestResultsPage() {
   })
 
   const anyExpanded = filteredQuestions.some(question => expandedQuestions.has(getQuestionKey(question)))
+
+  // Check which filters have applicable questions (but not all questions)
+  const hasCorrect = allQuestions.some(q => q.isCorrect) && !allQuestions.every(q => q.isCorrect)
+  const hasIncorrect = allQuestions.some(q => !q.isCorrect && !q.isUnanswered) && !allQuestions.every(q => !q.isCorrect && !q.isUnanswered)
+  const hasUnanswered = allQuestions.some(q => q.isUnanswered) && !allQuestions.every(q => q.isUnanswered)
+  const hasReading = allQuestions.some(q => q.moduleType === 'reading') && !allQuestions.every(q => q.moduleType === 'reading')
+  const hasMath = allQuestions.some(q => q.moduleType === 'math') && !allQuestions.every(q => q.moduleType === 'math')
 
   const toggleFilter = (filter: string) => {
     setExpandedQuestions(new Set())
@@ -1097,7 +1342,14 @@ export default function TestResultsPage() {
       <div className="flex min-h-screen flex-col items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-2">No test data found</h1>
-          <p className="text-muted-foreground mb-4">We couldn't find any completed test data.</p>
+          <p className="text-muted-foreground mb-4">
+            {dbError || "We couldn't find any completed test data."}
+          </p>
+          {testIdParam && (
+            <p className="text-sm text-muted-foreground mb-4">
+              Looking for: Test ID {testIdParam}, Section: {sectionParam}
+            </p>
+          )}
           <Link href="/">
             <Button>Return to Home</Button>
           </Link>
@@ -1145,38 +1397,62 @@ export default function TestResultsPage() {
                     <div className="relative h-60 w-60 sm:h-72 sm:w-72">
                       <svg className="h-full w-full rotate-90" viewBox="0 0 100 100">
                         <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" strokeWidth="8" />
-                        <circle
-                          cx="50"
-                          cy="50"
-                          r="40"
-                          fill="none"
-                          stroke="#3b82f6"
-                          strokeWidth="8"
-                          strokeDasharray={`${animatedReadingDash} 251.2`}
-                          strokeDashoffset="0"
-                        />
-                        <circle
-                          cx="50"
-                          cy="50"
-                          r="40"
-                          fill="none"
-                          stroke="#f97316"
-                          strokeWidth="8"
-                          strokeDasharray={`${animatedMathDash} 251.2`}
-                          strokeDashoffset="0"
-                          transform="scale(1 -1) translate(0 -100)"
-                        />
+                        {!isMathView && (
+                          <circle
+                            cx="50"
+                            cy="50"
+                            r="40"
+                            fill="none"
+                            stroke="#3b82f6"
+                            strokeWidth="8"
+                            strokeDasharray={`${animatedReadingDash} 251.2`}
+                            strokeDashoffset="0"
+                          />
+                        )}
+                        {!isRWView && (
+                          <circle
+                            cx="50"
+                            cy="50"
+                            r="40"
+                            fill="none"
+                            stroke="#f97316"
+                            strokeWidth="8"
+                            strokeDasharray={`${animatedMathDash} 251.2`}
+                            strokeDashoffset="0"
+                            transform="scale(1 -1) translate(0 -100)"
+                          />
+                        )}
                       </svg>
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div className="text-center">
-                          <div className="text-5xl font-bold">{animatedTotal}</div>
-                          <div className="text-sm text-muted-foreground">Total Score</div>
+                          {isFullView ? (
+                            <>
+                              <div className="text-5xl font-bold">{animatedTotal}</div>
+                              <div className="text-sm text-muted-foreground">Total Score</div>
+                            </>
+                          ) : isRWView ? (
+                            <>
+                              <div className="text-5xl font-bold">{animatedReading}
+                                <span className="text-lg text-muted-foreground">/800</span>
+                              </div>
+                              <div className="text-sm text-muted-foreground">Reading &amp; Writing</div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="text-5xl font-bold">{animatedMath}
+                                <span className="text-lg text-muted-foreground">/800</span>
+                              </div>
+                              <div className="text-sm text-muted-foreground">Mathematics</div>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
 
-                    <div className="grid w-full gap-6 md:grid-cols-2">
+                    <div className={`grid w-full gap-6 ${isFullView ? 'md:grid-cols-2' : 'md:grid-cols-1'}`}>
+                      {!isMathView && (
                       <div className="space-y-4">
+                        {isFullView && (
                         <div className="text-center">
                           <div className="text-3xl font-bold">
                             {animatedReading}
@@ -1184,6 +1460,7 @@ export default function TestResultsPage() {
                           </div>
                           <p className="text-sm text-muted-foreground">Reading &amp; Writing</p>
                         </div>
+                        )}
                         <div className="space-y-3">
                           <div className="space-y-1">
                             <div className="flex justify-between text-sm">
@@ -1207,8 +1484,10 @@ export default function TestResultsPage() {
                           </div>
                         </div>
                       </div>
-
+                      )}
+                      {!isRWView && (
                       <div className="space-y-4">
+                        {isFullView && (
                         <div className="text-center">
                           <div className="text-3xl font-bold">
                             {animatedMath}
@@ -1216,6 +1495,7 @@ export default function TestResultsPage() {
                           </div>
                           <p className="text-sm text-muted-foreground">Mathematics</p>
                         </div>
+                        )}
                         <div className="space-y-3">
                           <div className="space-y-1">
                             <div className="flex justify-between text-sm">
@@ -1239,6 +1519,7 @@ export default function TestResultsPage() {
                           </div>
                         </div>
                       </div>
+                      )}
                     </div>
                   </div>
                 </TabsContent>
@@ -1253,35 +1534,30 @@ export default function TestResultsPage() {
                             <TableRow>
                               <TableHead style={getColumnStyle('rank')}>Rank</TableHead>
                               <TableHead style={getColumnStyle('name')}>Name</TableHead>
-                              <TableHead style={getColumnStyle('totalScore')} className="text-right">Total</TableHead>
-                              <TableHead style={getColumnStyle('readingScore')} className="text-right">Reading</TableHead>
-                              <TableHead style={getColumnStyle('mathScore')} className="text-right">Math</TableHead>
-                              <TableHead style={getColumnStyle('module')} className="text-right">1</TableHead>
-                              <TableHead style={getColumnStyle('module')} className="text-right">2</TableHead>
-                              <TableHead style={getColumnStyle('module')} className="text-right">3</TableHead>
-                              <TableHead style={getColumnStyle('module')} className="text-right">4</TableHead>
+                              {isFullView && <TableHead style={getColumnStyle('totalScore')} className="text-right">Total</TableHead>}
+                              {!isMathView && <TableHead style={getColumnStyle('readingScore')} className="text-right">Reading</TableHead>}
+                              {!isRWView && <TableHead style={getColumnStyle('mathScore')} className="text-right">Math</TableHead>}
+                              {!isMathView && <TableHead style={getColumnStyle('module')} className="text-right">1</TableHead>}
+                              {!isMathView && <TableHead style={getColumnStyle('module')} className="text-right">2</TableHead>}
+                              {!isRWView && <TableHead style={getColumnStyle('module')} className="text-right">3</TableHead>}
+                              {!isRWView && <TableHead style={getColumnStyle('module')} className="text-right">4</TableHead>}
                               <TableHead style={getColumnStyle('time')} className="text-right">Time</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             <TableRow className="border-primary/20 bg-primary/5">
-                              <TableCell style={getColumnStyle('rank')}>
-                                {currentUserRank}
+                              <TableCell className="font-medium">
+                                #{currentUserRank}
                               </TableCell>
-                              <TableCell style={getColumnStyle('name')}>
-                                {currentUserEntry.name}
-                                <Badge variant="secondary" className="ml-2 text-xs">
-                                  You
-                                </Badge>
-                              </TableCell>
-                              <TableCell style={getColumnStyle('totalScore')} className="whitespace-nowrap text-right">{currentUserEntry.score}</TableCell>
-                              <TableCell style={getColumnStyle('readingScore')} className="whitespace-nowrap text-right">{currentUserEntry.readingScore}</TableCell>
-                              <TableCell style={getColumnStyle('mathScore')} className="whitespace-nowrap text-right">{currentUserEntry.mathScore}</TableCell>
-                              <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{currentUserEntry.module1}/27</TableCell>
-                              <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{currentUserEntry.module2}/27</TableCell>
-                              <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{currentUserEntry.module3}/22</TableCell>
-                              <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{currentUserEntry.module4}/22</TableCell>
-                              <TableCell style={getColumnStyle('time')} className="whitespace-nowrap text-right">{formatTimeSpent(currentUserEntry.timeSpent)}</TableCell>
+                              <TableCell className="font-medium">{currentUserEntry.name}</TableCell>
+                              {isFullView && <TableCell className="text-right">{currentUserEntry.score}</TableCell>}
+                              {!isMathView && <TableCell className="text-right">{currentUserEntry.readingScore}</TableCell>}
+                              {!isRWView && <TableCell className="text-right">{currentUserEntry.mathScore}</TableCell>}
+                              {!isMathView && <TableCell className="text-right">{currentUserEntry.module1}</TableCell>}
+                              {!isMathView && <TableCell className="text-right">{currentUserEntry.module2}</TableCell>}
+                              {!isRWView && <TableCell className="text-right">{currentUserEntry.module3}</TableCell>}
+                              {!isRWView && <TableCell className="text-right">{currentUserEntry.module4}</TableCell>}
+                              <TableCell className="text-right">{formatTimeSpent(currentUserEntry.timeSpent)}</TableCell>
                             </TableRow>
                           </TableBody>
                         </Table>
@@ -1297,104 +1573,118 @@ export default function TestResultsPage() {
                               Rank
                             </TableHead>
                             <TableHead style={getColumnStyle('name')}>Name</TableHead>
-                            <TableHead
-                              style={getColumnStyle('totalScore')}
-                              className="cursor-pointer text-right hover:bg-muted/50"
-                              onClick={() => handleLeaderboardSort('score')}
-                              aria-sort={
-                                leaderboardSort.column === 'score'
-                                  ? leaderboardSort.direction === 'asc'
-                                    ? 'ascending'
-                                    : 'descending'
-                                  : undefined
-                              }
-                            >
-                              {renderSortableHeaderContent('Total', 'score')}
-                            </TableHead>
-                            <TableHead
-                              style={getColumnStyle('readingScore')}
-                              className="cursor-pointer text-right hover:bg-muted/50"
-                              onClick={() => handleLeaderboardSort('readingScore')}
-                              aria-sort={
-                                leaderboardSort.column === 'readingScore'
-                                  ? leaderboardSort.direction === 'asc'
-                                    ? 'ascending'
-                                    : 'descending'
-                                  : undefined
-                              }
-                            >
-                              {renderSortableHeaderContent('Reading', 'readingScore')}
-                            </TableHead>
-                            <TableHead
-                              style={getColumnStyle('mathScore')}
-                              className="cursor-pointer text-right hover:bg-muted/50"
-                              onClick={() => handleLeaderboardSort('mathScore')}
-                              aria-sort={
-                                leaderboardSort.column === 'mathScore'
-                                  ? leaderboardSort.direction === 'asc'
-                                    ? 'ascending'
-                                    : 'descending'
-                                  : undefined
-                              }
-                            >
-                              {renderSortableHeaderContent('Math', 'mathScore')}
-                            </TableHead>
-                            <TableHead
-                              style={getColumnStyle('module')}
-                              className="cursor-pointer text-right hover:bg-muted/50"
-                              onClick={() => handleLeaderboardSort('module1')}
-                              aria-sort={
-                                leaderboardSort.column === 'module1'
-                                  ? leaderboardSort.direction === 'asc'
-                                    ? 'ascending'
-                                    : 'descending'
-                                  : undefined
-                              }
-                            >
-                              {renderSortableHeaderContent('1', 'module1')}
-                            </TableHead>
-                            <TableHead
-                              style={getColumnStyle('module')}
-                              className="cursor-pointer text-right hover:bg-muted/50"
-                              onClick={() => handleLeaderboardSort('module2')}
-                              aria-sort={
-                                leaderboardSort.column === 'module2'
-                                  ? leaderboardSort.direction === 'asc'
-                                    ? 'ascending'
-                                    : 'descending'
-                                  : undefined
-                              }
-                            >
-                              {renderSortableHeaderContent('2', 'module2')}
-                            </TableHead>
-                            <TableHead
-                              style={getColumnStyle('module')}
-                              className="cursor-pointer text-right hover:bg-muted/50"
-                              onClick={() => handleLeaderboardSort('module3')}
-                              aria-sort={
-                                leaderboardSort.column === 'module3'
-                                  ? leaderboardSort.direction === 'asc'
-                                    ? 'ascending'
-                                    : 'descending'
-                                  : undefined
-                              }
-                            >
-                              {renderSortableHeaderContent('3', 'module3')}
-                            </TableHead>
-                            <TableHead
-                              style={getColumnStyle('module')}
-                              className="cursor-pointer text-right hover:bg-muted/50"
-                              onClick={() => handleLeaderboardSort('module4')}
-                              aria-sort={
-                                leaderboardSort.column === 'module4'
-                                  ? leaderboardSort.direction === 'asc'
-                                    ? 'ascending'
-                                    : 'descending'
-                                  : undefined
-                              }
-                            >
-                              {renderSortableHeaderContent('4', 'module4')}
-                            </TableHead>
+                            {isFullView && (
+                              <TableHead
+                                style={getColumnStyle('totalScore')}
+                                className="cursor-pointer text-right hover:bg-muted/50"
+                                onClick={() => handleLeaderboardSort('score')}
+                                aria-sort={
+                                  leaderboardSort.column === 'score'
+                                    ? leaderboardSort.direction === 'asc'
+                                      ? 'ascending'
+                                      : 'descending'
+                                    : undefined
+                                }
+                              >
+                                {renderSortableHeaderContent('Total', 'score')}
+                              </TableHead>
+                            )}
+                            {!isMathView && (
+                              <TableHead
+                                style={getColumnStyle('readingScore')}
+                                className="cursor-pointer text-right hover:bg-muted/50"
+                                onClick={() => handleLeaderboardSort('readingScore')}
+                                aria-sort={
+                                  leaderboardSort.column === 'readingScore'
+                                    ? leaderboardSort.direction === 'asc'
+                                      ? 'ascending'
+                                      : 'descending'
+                                    : undefined
+                                }
+                              >
+                                {renderSortableHeaderContent('Reading', 'readingScore')}
+                              </TableHead>
+                            )}
+                            {!isRWView && (
+                              <TableHead
+                                style={getColumnStyle('mathScore')}
+                                className="cursor-pointer text-right hover:bg-muted/50"
+                                onClick={() => handleLeaderboardSort('mathScore')}
+                                aria-sort={
+                                  leaderboardSort.column === 'mathScore'
+                                    ? leaderboardSort.direction === 'asc'
+                                      ? 'ascending'
+                                      : 'descending'
+                                    : undefined
+                                }
+                              >
+                                {renderSortableHeaderContent('Math', 'mathScore')}
+                              </TableHead>
+                            )}
+                            {!isMathView && (
+                              <TableHead
+                                style={getColumnStyle('module')}
+                                className="cursor-pointer text-right hover:bg-muted/50"
+                                onClick={() => handleLeaderboardSort('module1')}
+                                aria-sort={
+                                  leaderboardSort.column === 'module1'
+                                    ? leaderboardSort.direction === 'asc'
+                                      ? 'ascending'
+                                      : 'descending'
+                                    : undefined
+                                }
+                              >
+                                {renderSortableHeaderContent('1', 'module1')}
+                              </TableHead>
+                            )}
+                            {!isMathView && (
+                              <TableHead
+                                style={getColumnStyle('module')}
+                                className="cursor-pointer text-right hover:bg-muted/50"
+                                onClick={() => handleLeaderboardSort('module2')}
+                                aria-sort={
+                                  leaderboardSort.column === 'module2'
+                                    ? leaderboardSort.direction === 'asc'
+                                      ? 'ascending'
+                                      : 'descending'
+                                    : undefined
+                                }
+                              >
+                                {renderSortableHeaderContent('2', 'module2')}
+                              </TableHead>
+                            )}
+                            {!isRWView && (
+                              <TableHead
+                                style={getColumnStyle('module')}
+                                className="cursor-pointer text-right hover:bg-muted/50"
+                                onClick={() => handleLeaderboardSort('module3')}
+                                aria-sort={
+                                  leaderboardSort.column === 'module3'
+                                    ? leaderboardSort.direction === 'asc'
+                                      ? 'ascending'
+                                      : 'descending'
+                                    : undefined
+                                }
+                              >
+                                {renderSortableHeaderContent('3', 'module3')}
+                              </TableHead>
+                            )}
+                            {!isRWView && (
+                              <TableHead
+                                style={getColumnStyle('module')}
+                                className="cursor-pointer text-right hover:bg-muted/50"
+                                onClick={() => handleLeaderboardSort('module4')}
+                                aria-sort={
+                                  leaderboardSort.column === 'module4'
+                                    ? leaderboardSort.direction === 'asc'
+                                      ? 'ascending'
+                                      : 'descending'
+                                    : undefined
+                                }
+                              >
+                                {renderSortableHeaderContent('4', 'module4')}
+                              </TableHead>
+                            )}
                             <TableHead
                               style={getColumnStyle('time')}
                               className="cursor-pointer text-right hover:bg-muted/50"
@@ -1450,35 +1740,30 @@ export default function TestResultsPage() {
                             <TableRow>
                               <TableHead style={getColumnStyle('rank')}>Rank</TableHead>
                               <TableHead style={getColumnStyle('name')}>Name</TableHead>
-                              <TableHead style={getColumnStyle('totalScore')} className="text-right">Total</TableHead>
-                              <TableHead style={getColumnStyle('readingScore')} className="text-right">Reading</TableHead>
-                              <TableHead style={getColumnStyle('mathScore')} className="text-right">Math</TableHead>
-                              <TableHead style={getColumnStyle('module')} className="text-right">1</TableHead>
-                              <TableHead style={getColumnStyle('module')} className="text-right">2</TableHead>
-                              <TableHead style={getColumnStyle('module')} className="text-right">3</TableHead>
-                              <TableHead style={getColumnStyle('module')} className="text-right">4</TableHead>
+                              {isFullView && <TableHead style={getColumnStyle('totalScore')} className="text-right">Total</TableHead>}
+                              {!isMathView && <TableHead style={getColumnStyle('readingScore')} className="text-right">Reading</TableHead>}
+                              {!isRWView && <TableHead style={getColumnStyle('mathScore')} className="text-right">Math</TableHead>}
+                              {!isMathView && <TableHead style={getColumnStyle('module')} className="text-right">1</TableHead>}
+                              {!isMathView && <TableHead style={getColumnStyle('module')} className="text-right">2</TableHead>}
+                              {!isRWView && <TableHead style={getColumnStyle('module')} className="text-right">3</TableHead>}
+                              {!isRWView && <TableHead style={getColumnStyle('module')} className="text-right">4</TableHead>}
                               <TableHead style={getColumnStyle('time')} className="text-right">Time</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             <TableRow className="border-primary/20 bg-primary/5">
-                              <TableCell style={getColumnStyle('rank')}>
-                                {currentUserRank}
+                              <TableCell className="font-medium">
+                                #{currentUserRank}
                               </TableCell>
-                              <TableCell style={getColumnStyle('name')}>
-                                {currentUserEntry.name}
-                                <Badge variant="secondary" className="ml-2 text-xs">
-                                  You
-                                </Badge>
-                              </TableCell>
-                              <TableCell style={getColumnStyle('totalScore')} className="whitespace-nowrap text-right">{currentUserEntry.score}</TableCell>
-                              <TableCell style={getColumnStyle('readingScore')} className="whitespace-nowrap text-right">{currentUserEntry.readingScore}</TableCell>
-                              <TableCell style={getColumnStyle('mathScore')} className="whitespace-nowrap text-right">{currentUserEntry.mathScore}</TableCell>
-                              <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{currentUserEntry.module1}/27</TableCell>
-                              <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{currentUserEntry.module2}/27</TableCell>
-                              <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{currentUserEntry.module3}/22</TableCell>
-                              <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{currentUserEntry.module4}/22</TableCell>
-                              <TableCell style={getColumnStyle('time')} className="whitespace-nowrap text-right">{formatTimeSpent(currentUserEntry.timeSpent)}</TableCell>
+                              <TableCell className="font-medium">{currentUserEntry.name}</TableCell>
+                              {isFullView && <TableCell className="text-right">{currentUserEntry.score}</TableCell>}
+                              {!isMathView && <TableCell className="text-right">{currentUserEntry.readingScore}</TableCell>}
+                              {!isRWView && <TableCell className="text-right">{currentUserEntry.mathScore}</TableCell>}
+                              {!isMathView && <TableCell className="text-right">{currentUserEntry.module1}</TableCell>}
+                              {!isMathView && <TableCell className="text-right">{currentUserEntry.module2}</TableCell>}
+                              {!isRWView && <TableCell className="text-right">{currentUserEntry.module3}</TableCell>}
+                              {!isRWView && <TableCell className="text-right">{currentUserEntry.module4}</TableCell>}
+                              <TableCell className="text-right">{formatTimeSpent(currentUserEntry.timeSpent)}</TableCell>
                             </TableRow>
                           </TableBody>
                         </Table>
@@ -1556,7 +1841,7 @@ export default function TestResultsPage() {
             </Tabs>
           </Card>
 
-          {/* Question Review Section */}
+          {/* Question Review Section - shown for all views, filtered by section */}
           <div className="mt-8">
             {/* Filters */}
             <div className="flex flex-wrap gap-2 mb-6 items-center justify-between">
@@ -1568,44 +1853,54 @@ export default function TestResultsPage() {
                 >
                   All
                 </Button>
-                <Button
-                  variant={selectedFilters.includes('correct') ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => toggleFilter('correct')}
-                  className={selectedFilters.includes('correct') ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" : ""}
-                >
-                  Correct
-                </Button>
-                <Button
-                  variant={selectedFilters.includes('incorrect') ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => toggleFilter('incorrect')}
-                  className={selectedFilters.includes('incorrect') ? "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" : ""}
-                >
-                  Incorrect
-                </Button>
-                <Button
-                  variant={selectedFilters.includes('unanswered') ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => toggleFilter('unanswered')}
-                  className={selectedFilters.includes('unanswered') ? "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200" : ""}
-                >
-                  Unanswered
-                </Button>
-                <Button
-                  variant={selectedFilters.includes('reading') ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => toggleFilter('reading')}
-                >
-                  Reading & Writing
-                </Button>
-                <Button
-                  variant={selectedFilters.includes('math') ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => toggleFilter('math')}
-                >
-                  Math
-                </Button>
+                {hasCorrect && (
+                  <Button
+                    variant={selectedFilters.includes('correct') ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => toggleFilter('correct')}
+                    className={selectedFilters.includes('correct') ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" : ""}
+                  >
+                    Correct
+                  </Button>
+                )}
+                {hasIncorrect && (
+                  <Button
+                    variant={selectedFilters.includes('incorrect') ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => toggleFilter('incorrect')}
+                    className={selectedFilters.includes('incorrect') ? "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" : ""}
+                  >
+                    Incorrect
+                  </Button>
+                )}
+                {hasUnanswered && (
+                  <Button
+                    variant={selectedFilters.includes('unanswered') ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => toggleFilter('unanswered')}
+                    className={selectedFilters.includes('unanswered') ? "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200" : ""}
+                  >
+                    Unanswered
+                  </Button>
+                )}
+                {hasReading && (
+                  <Button
+                    variant={selectedFilters.includes('reading') ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => toggleFilter('reading')}
+                  >
+                    Reading & Writing
+                  </Button>
+                )}
+                {hasMath && (
+                  <Button
+                    variant={selectedFilters.includes('math') ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => toggleFilter('math')}
+                  >
+                    Math
+                  </Button>
+                )}
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button

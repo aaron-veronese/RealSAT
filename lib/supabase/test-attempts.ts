@@ -5,12 +5,20 @@ import type { DBTestAttempt, TestAttemptModules, TestStatus } from '@/types/db';
  * Get a specific test attempt by user_id and test_id
  */
 export async function getTestAttempt(userId: string, testId: number) {
-  return supabase
+  return await supabase
     .from('test_attempts')
     .select('*')
     .eq('user_id', userId)
     .eq('test_id', testId)
-    .single();
+    .single()
+}
+
+export async function getLeaderboard(testId: number) {
+  return await supabase
+    .from('test_attempts')
+    .select('*')
+    .eq('test_id', testId)
+    .order('created_at', { ascending: false })
 }
 
 /**
