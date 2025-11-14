@@ -995,13 +995,9 @@ export default function TestResultsPage() {
         // Get testId from URL params, fallback to 1
         const testId = testIdParam || 1;
         
-        console.log('Fetching test attempt for:', { userId, testId, section: sectionParam });
-        
         // Import getTestAttempt dynamically to avoid SSR issues
         const { getTestAttempt } = await import("@/lib/supabase/test-attempts");
         const { data, error } = await getTestAttempt(userId, testId);
-        
-        console.log('Test attempt fetch result:', { data, error });
         
         if (error || !data) {
           setDbError(error?.message || "No test attempt found for this user and test ID.");
@@ -1010,8 +1006,6 @@ export default function TestResultsPage() {
         }
         // Parse modules from DBTestAttempt
         const dbModules = data.modules || {};
-        
-        console.log('Raw DB modules:', dbModules);
         
         // Get the module numbers we need based on section
         const moduleNumbers = isRWView ? [1, 2] : isMathView ? [3, 4] : [1, 2, 3, 4];
@@ -1089,8 +1083,6 @@ export default function TestResultsPage() {
               })
             };
           });
-        
-        console.log('Parsed modules:', parsedModules);
         
         if (parsedModules.length === 0) {
           setDbError(`No ${sectionParam === 'rw' ? 'Reading & Writing' : sectionParam === 'math' ? 'Math' : ''} modules found for this test.`);
