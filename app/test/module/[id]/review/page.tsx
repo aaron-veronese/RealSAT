@@ -9,8 +9,10 @@ import { CheckCircle, Flag, AlertCircle, ChevronRight, Clock } from "lucide-reac
 import type { TestQuestion } from "@/lib/types"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useToast } from "@/components/ui/use-toast"
-import { getCurrentUserId } from "@/lib/auth"
-import { updateModuleData, completeTest, getTestAttempt, validateAndUpdateModule, createTestAttempt } from "@/lib/supabase/test-attempts"
+import { getCurrentUserId, isCurrentUserTemp } from "@/lib/auth"
+import { updateModuleData, completeTest, getTestAttempt, validateAndUpdateModule, createTestAttempt } from "@/lib/supabase/test-results"
+import { SignupModal } from "@/components/signup-modal"
+import { shouldPromptSignup } from "@/lib/temp-user"
 import type { ModuleQuestion } from "@/types/db"
 import {
   AlertDialog,
@@ -38,6 +40,8 @@ export default function ModuleReviewPage() {
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const [showSignupModal, setShowSignupModal] = useState(false)
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null)
   const totalQuestions = moduleId <= 2 ? 27 : 22
   const moduleType = moduleId <= 2 ? "reading" : "math"
   const nextModuleId = moduleId < 4 ? moduleId + 1 : null
@@ -361,6 +365,27 @@ export default function ModuleReviewPage() {
     router.push(`/test/module/${moduleId}?testId=${testId}&question=${questionNumber}`)
   }
 
+  const handleNavigateHome = async () => {
+    // Check if user is temp and has progress
+    if (isCurrentUserTemp()) {
+      const hasProgress = await shouldPromptSignup(userId)
+      if (hasProgress) {
+        setPendingNavigation('/')
+        setShowSignupModal(true)
+        return
+      }
+    }
+    router.push('/')
+  }
+
+  const handleSignupSuccess = () => {
+    setShowSignupModal(false)
+    // Continue with pending navigation after signup
+    if (pendingNavigation) {
+      router.push(pendingNavigation)
+    }
+  }
+
   const getModuleTitle = () => {
     switch (moduleId) {
       case 1:
@@ -521,6 +546,16 @@ export default function ModuleReviewPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Signup Modal for Temp Users */}
+      <SignupModal
+        open={showSignupModal}
+        onOpenChange={setShowSignupModal}
+        tempUserId={userId}
+        onSuccess={handleSignupSuccess}
+        title="Sign up to save your progress"
+        description="You're doing great! Create an account to save your test progress and continue later."
+      />
     </div>
   )
 }

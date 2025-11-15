@@ -12,7 +12,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { getCurrentUserId, getCurrentUserName } from "@/lib/auth"
 import { 
   getPracticeTests,
-} from "@/lib/supabase/test-attempts"
+} from "@/lib/supabase/test-results"
 
 type PracticeTest = {
   test_id: number

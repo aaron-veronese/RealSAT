@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { ChartContainer } from "@/components/ui/chart"
-import { Home, Gem, ChevronUp } from "lucide-react"
+import { Home, Gem, ChevronUp, Lock } from "lucide-react"
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -24,6 +24,9 @@ import {
 import { calculateTestScore } from "@/lib/scoring"
 import { RenderedContent } from "@/components/rendered-content"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { SignupModal } from "@/components/signup-modal"
+import { isCurrentUserTemp, getCurrentUserId } from "@/lib/auth"
+import { unlockVideo, requestVideo as requestVideoAPI, getUserVideoData, getQuestionVideos } from "@/lib/supabase/video-requests"
 import type { Test, TestModule, TestScore } from "@/lib/types"
 
 type StoredProgressEntry = {
@@ -52,45 +55,60 @@ type LegendContentProps = {
 }
 
 const fetchUserTestResults = async (): Promise<StoredProgressEntry[]> => {
-  await new Promise((resolve) => setTimeout(resolve, 150))
-
-  return [
-    {
-      id: "result-2025-03-02",
-      completedAt: new Date("2025-03-02T14:15:00Z").getTime(),
-      reading: 585,
-      math: 645,
-      testId: 28,
-    },
-    {
-      id: "result-2025-02-10",
-      completedAt: new Date("2025-02-10T16:40:00Z").getTime(),
-      reading: 610,
-      math: 670,
-      testId: 24,
-    },
-    {
-      id: "result-2025-01-18",
-      completedAt: new Date("2025-01-18T13:05:00Z").getTime(),
-      reading: 560,
-      math: 640,
-      testId: 22,
-    },
-    {
-      id: "result-2024-12-12",
-      completedAt: new Date("2024-12-12T18:20:00Z").getTime(),
-      reading: 540,
-      math: 620,
-      testId: 19,
-    },
-    {
-      id: "result-2024-11-03",
-      completedAt: new Date("2024-11-03T09:30:00Z").getTime(),
-      reading: 520,
-      math: 610,
-      testId: 17,
-    },
-  ]
+  try {
+    // Import dynamically to avoid SSR issues
+    const { supabase } = await import("@/lib/supabase/client")
+    const { getCurrentUserId } = await import("@/lib/auth")
+    const { calculateTestScore } = await import("@/lib/scoring")
+    
+    const userId = getCurrentUserId()
+    
+    // Fetch all test attempts for this user
+    const { data, error } = await supabase
+      .from('test_results')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true })
+    
+    if (error || !data) {
+      console.error('Error fetching user test results:', error)
+      return []
+    }
+    
+    // Convert database results to StoredProgressEntry format
+    return data.map((attempt: any) => {
+      const dbModules = attempt.modules || {}
+      
+      // Build modules array for scoring
+      const modulesForScoring = Object.entries(dbModules).map(([key, mod]: [string, any]) => ({
+        id: key,
+        testId: String(attempt.test_id),
+        moduleNumber: mod.module_number,
+        moduleType: mod.module_number <= 2 ? "reading" : "math",
+        isAdaptive: mod.module_number === 2 || mod.module_number === 4,
+        startedAt: new Date(),
+        completedAt: new Date(),
+        questions: (mod.questions || []).map((q: any) => ({
+          correctAnswer: q.correct_answer,
+          userAnswer: q.user_answer,
+          options: q.options || [],
+        }))
+      }))
+      
+      const score = calculateTestScore(modulesForScoring as any)
+      
+      return {
+        id: attempt.id,
+        completedAt: new Date(attempt.created_at).getTime(),
+        reading: score.readingWriting.scaledScore,
+        math: score.math.scaledScore,
+        testId: attempt.test_id,
+      }
+    })
+  } catch (err) {
+    console.error('Error in fetchUserTestResults:', err)
+    return []
+  }
 }
 
 const formatAxisLabel = (timestamp: number): string => {
@@ -192,14 +210,17 @@ export default function TestResultsPage() {
   const [animatedReadingDash, setAnimatedReadingDash] = useState(0)
   const [animatedMathDash, setAnimatedMathDash] = useState(0)
 
-  const [remainingVideos, setRemainingVideos] = useState(5)
+  const [gemsBalance, setGemsBalance] = useState(0)
   const [selectedFilters, setSelectedFilters] = useState<string[]>(['all'])
   const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set())
-  const [requestedVideos, setRequestedVideos] = useState<Map<string, 'pending' | 'available'>>(new Map())
+  const [userVideoRequests, setUserVideoRequests] = useState<string[]>([])
+  const [questionVideos, setQuestionVideos] = useState<Map<string, string>>(new Map()) // questionId -> video URL
   const [timeSortOrder, setTimeSortOrder] = useState<'desc' | 'asc' | 'none'>('none')
   const [leaderboardScrollTop, setLeaderboardScrollTop] = useState(0)
   const [activeTab, setActiveTab] = useState<'score' | 'leaderboard' | 'progress'>('score')
   const [showScrollTop, setShowScrollTop] = useState(false)
+  const [showSignupModal, setShowSignupModal] = useState(false)
+  const [isTempUser, setIsTempUser] = useState(false)
   const searchParams = useSearchParams()
   const sectionParam = (searchParams?.get('section') || 'full').toLowerCase() as 'full' | 'rw' | 'math'
   const testIdParam = searchParams?.get('testId') ? parseInt(searchParams.get('testId')!) : null
@@ -214,6 +235,38 @@ export default function TestResultsPage() {
   const scrollToTop = useCallback(() => {
     if (typeof window === "undefined") return
     window.scrollTo({ top: 0, behavior: "smooth" })
+  }, [])
+
+  const handleTabChange = useCallback((value: string) => {
+    // Allow all tabs - show blurred content with signup prompt for temp users
+    setActiveTab(value as 'score' | 'leaderboard' | 'progress')
+  }, [])
+
+  const handleSignupSuccess = () => {
+    setShowSignupModal(false)
+    setIsTempUser(false)
+    // Refresh page to update with real user data
+    window.location.reload()
+  }
+
+  useEffect(() => {
+    // Check if current user is temp
+    const tempStatus = isCurrentUserTemp()
+    console.log('[RESULTS] isTempUser check:', tempStatus, 'userId:', getCurrentUserId())
+    setIsTempUser(tempStatus)
+
+    // Load user's gems balance and video requests
+    if (!tempStatus) {
+      const loadUserVideoData = async () => {
+        const userId = getCurrentUserId()
+        if (userId) {
+          const { videoRequests, gemsBalance: gems } = await getUserVideoData(userId)
+          setUserVideoRequests(videoRequests)
+          setGemsBalance(gems)
+        }
+      }
+      loadUserVideoData()
+    }
   }, [])
 
   useEffect(() => {
@@ -283,6 +336,9 @@ export default function TestResultsPage() {
             entry.reading === currentEntry.reading &&
             entry.math === currentEntry.math,
         )
+        
+        console.log('[LOAD RESULTS] Duplicate check:', duplicate, 'DB entries:', sanitized.length, 'Current entry:', currentEntry)
+        
         if (!duplicate) {
           merged.push(currentEntry)
         }
@@ -316,7 +372,140 @@ export default function TestResultsPage() {
     }
   }, [testScore, modules])
 
+  // Load video availability for all questions (batch request)
+  useEffect(() => {
+    const loadQuestionVideos = async () => {
+      if (modules.length === 0) return
+
+      const allQuestionIds = modules.flatMap(module =>
+        module.questions.map(q => q.id)
+      )
+
+      const videoMap = await getQuestionVideos(allQuestionIds)
+      setQuestionVideos(videoMap)
+    }
+
+    loadQuestionVideos()
+  }, [modules])
+
   const chartData = useMemo<ProgressChartPoint[]>(() => {
+    console.log('[CHART DATA] isTempUser:', isTempUser, 'userResults.length:', userResults.length)
+    
+    // For temp users, show seed data with increasing scores
+    if (isTempUser) {
+      const seedData: StoredProgressEntry[] = [
+        {
+          id: "seed-1",
+          completedAt: Date.now() - 60 * 24 * 60 * 60 * 1000, // 60 days ago
+          reading: 480,
+          math: 490,
+          testId: 1,
+        },
+        {
+          id: "seed-2",
+          completedAt: Date.now() - 50 * 24 * 60 * 60 * 1000,
+          reading: 510,
+          math: 520,
+          testId: 2,
+        },
+        {
+          id: "seed-3",
+          completedAt: Date.now() - 40 * 24 * 60 * 60 * 1000,
+          reading: 540,
+          math: 550,
+          testId: 3,
+        },
+        {
+          id: "seed-4",
+          completedAt: Date.now() - 30 * 24 * 60 * 60 * 1000,
+          reading: 560,
+          math: 575,
+          testId: 4,
+        },
+        {
+          id: "seed-5",
+          completedAt: Date.now() - 20 * 24 * 60 * 60 * 1000,
+          reading: 590,
+          math: 600,
+          testId: 5,
+        },
+        {
+          id: "seed-6",
+          completedAt: Date.now() - 10 * 24 * 60 * 60 * 1000,
+          reading: 610,
+          math: 625,
+          testId: 6,
+        },
+        {
+          id: "seed-7",
+          completedAt: Date.now() - 5 * 24 * 60 * 60 * 1000,
+          reading: 640,
+          math: 650,
+          testId: 7,
+        },
+        {
+          id: "seed-8",
+          completedAt: Date.now(),
+          reading: testScore?.readingWriting.scaledScore || 670,
+          math: testScore?.math.scaledScore || 680,
+          testId: 8,
+        },
+      ]
+      
+      return seedData
+        .slice()
+        .sort((a, b) => a.completedAt - b.completedAt)
+        .map((entry, index) => ({
+          ...entry,
+          total: entry.reading + entry.math,
+          index,
+          label: formatAxisLabel(entry.completedAt),
+        }))
+    }
+    
+    // Count entries that start with "current-" (these are from the current session)
+    const currentSessionEntries = userResults.filter(r => r.id.startsWith('current-'))
+    const dbEntries = userResults.filter(r => !r.id.startsWith('current-'))
+    
+    console.log('[CHART DATA] DB entries:', dbEntries.length, 'Current session:', currentSessionEntries.length)
+    
+    // For authenticated users with only 1 DB entry (first test ever), add baseline
+    if (!isTempUser && dbEntries.length === 1) {
+      // This is their first test ever - add a baseline seed
+      const realResult = dbEntries[0]
+      const baselineSeed: StoredProgressEntry = {
+        id: "baseline",
+        completedAt: realResult.completedAt - 30 * 24 * 60 * 60 * 1000, // 30 days before
+        reading: 200,
+        math: 200,
+        testId: 0,
+      }
+      
+      console.log('[CHART DATA] First test (1 DB entry), adding baseline seed')
+      
+      return [baselineSeed, realResult]
+        .slice()
+        .sort((a, b) => a.completedAt - b.completedAt)
+        .map((entry, index) => ({
+          ...entry,
+          total: entry.reading + entry.math,
+          index,
+          label: formatAxisLabel(entry.completedAt),
+        }))
+    }
+    
+    // For all other cases, only show DB entries (no current session entries)
+    return dbEntries
+      .slice()
+      .sort((a, b) => a.completedAt - b.completedAt)
+      .map((entry, index) => ({
+        ...entry,
+        total: entry.reading + entry.math,
+        index,
+        label: formatAxisLabel(entry.completedAt),
+      }))
+    
+    // For authenticated users with multiple results, show only real data
     return userResults
       .slice()
       .sort((a, b) => a.completedAt - b.completedAt)
@@ -326,7 +515,7 @@ export default function TestResultsPage() {
         index,
         label: formatAxisLabel(entry.completedAt),
       }))
-  }, [userResults])
+  }, [userResults, isTempUser, testScore])
 
   const xTicks = useMemo(() => chartData.map((entry) => entry.index), [chartData])
 
@@ -522,274 +711,26 @@ export default function TestResultsPage() {
     isCurrentUser: boolean
   }>>([])
 
-  // Mock leaderboard data for this test (fallback)
-  const mockLeaderboardData = [
-    {
-      id: "user-1",
-      name: "SATMaster2024",
-      score: 1580,
-      readingScore: 790,
-      mathScore: 790,
-      timeSpent: 3420, // seconds
-      module1: 26,
-      module2: 25,
-      module3: 21,
-      module4: 20,
-      isCurrentUser: false,
-    },
-    {
-      id: "user-2",
-      name: "MathWhiz",
-      score: 1520,
-      readingScore: 760,
-      mathScore: 760,
-      timeSpent: 3150,
-      module1: 25,
-      module2: 24,
-      module3: 20,
-      module4: 19,
-      isCurrentUser: false,
-    },
-    {
-      id: "user-3",
-      name: "ReadingPro",
-      score: 1490,
-      readingScore: 780,
-      mathScore: 710,
-      timeSpent: 2980,
-      module1: 26,
-      module2: 23,
-      module3: 19,
-      module4: 18,
-      isCurrentUser: false,
-    },
-    {
-      id: "user-4",
-      name: "TestTaker",
-      score: 1450,
-      readingScore: 720,
-      mathScore: 730,
-      timeSpent: 3240,
-      module1: 24,
-      module2: 22,
-      module3: 20,
-      module4: 19,
-      isCurrentUser: false,
-    },
-    {
-      id: "user-5",
-      name: "StudyHard",
-      score: 1420,
-      readingScore: 710,
-      mathScore: 710,
-      timeSpent: 3120,
-      module1: 23,
-      module2: 21,
-      module3: 19,
-      module4: 18,
-      isCurrentUser: false,
-    },
-    {
-      id: "user-6",
-      name: "Brainiac",
-      score: 1400,
-      readingScore: 700,
-      mathScore: 700,
-      timeSpent: 3300,
-      module1: 22,
-      module2: 20,
-      module3: 18,
-      module4: 17,
-      isCurrentUser: false,
-    },
-    {
-      id: "user-7",
-      name: "Scholar",
-      score: 1380,
-      readingScore: 690,
-      mathScore: 690,
-      timeSpent: 3180,
-      module1: 21,
-      module2: 19,
-      module3: 17,
-      module4: 16,
-      isCurrentUser: false,
-    },
-    {
-      id: "user-8",
-      name: "AceStudent",
-      score: 1360,
-      readingScore: 680,
-      mathScore: 680,
-      timeSpent: 3360,
-      module1: 20,
-      module2: 18,
-      module3: 16,
-      module4: 15,
-      isCurrentUser: false,
-    },
-    {
-      id: "user-9",
-      name: "TopScorer",
-      score: 1340,
-      readingScore: 670,
-      mathScore: 670,
-      timeSpent: 3240,
-      module1: 19,
-      module2: 17,
-      module3: 15,
-      module4: 14,
-      isCurrentUser: false,
-    },
-    {
-      id: "user-10",
-      name: "ElitePrep",
-      score: 1320,
-      readingScore: 660,
-      mathScore: 660,
-      timeSpent: 3420,
-      module1: 18,
-      module2: 16,
-      module3: 14,
-      module4: 13,
-      isCurrentUser: false,
-    },
-    {
-      id: "user-11",
-      name: "PrepMaster",
-      score: 1300,
-      readingScore: 650,
-      mathScore: 650,
-      timeSpent: 3300,
-      module1: 17,
-      module2: 15,
-      module3: 13,
-      module4: 12,
-      isCurrentUser: false,
-    },
-    {
-      id: "user-12",
-      name: "SATWizard",
-      score: 1280,
-      readingScore: 640,
-      mathScore: 640,
-      timeSpent: 3180,
-      module1: 16,
-      module2: 14,
-      module3: 12,
-      module4: 11,
-      isCurrentUser: false,
-    },
-    {
-      id: "user-13",
-      name: "ScoreBooster",
-      score: 1260,
-      readingScore: 630,
-      mathScore: 630,
-      timeSpent: 3360,
-      module1: 15,
-      module2: 13,
-      module3: 11,
-      module4: 10,
-      isCurrentUser: false,
-    },
-    {
-      id: "user-14",
-      name: "TestAce",
-      score: 1240,
-      readingScore: 620,
-      mathScore: 620,
-      timeSpent: 3240,
-      module1: 14,
-      module2: 12,
-      module3: 10,
-      module4: 9,
-      isCurrentUser: false,
-    },
-    {
-      id: "user-15",
-      name: "BrainPower",
-      score: 1220,
-      readingScore: 610,
-      mathScore: 610,
-      timeSpent: 3420,
-      module1: 13,
-      module2: 11,
-      module3: 9,
-      module4: 8,
-      isCurrentUser: false,
-    },
-    {
-      id: "user-16",
-      name: "StudyChamp",
-      score: 1200,
-      readingScore: 600,
-      mathScore: 600,
-      timeSpent: 3300,
-      module1: 12,
-      module2: 10,
-      module3: 8,
-      module4: 7,
-      isCurrentUser: false,
-    },
-    {
-      id: "user-17",
-      name: "PrepPro",
-      score: 1180,
-      readingScore: 590,
-      mathScore: 590,
-      timeSpent: 3180,
-      module1: 11,
-      module2: 9,
-      module3: 7,
-      module4: 6,
-      isCurrentUser: false,
-    },
-    {
-      id: "user-18",
-      name: "SATKing",
-      score: 1160,
-      readingScore: 580,
-      mathScore: 580,
-      timeSpent: 3360,
-      module1: 10,
-      module2: 8,
-      module3: 6,
-      module4: 5,
-      isCurrentUser: false,
-    },
-    {
-      id: "user-19",
-      name: "TestHero",
-      score: 1140,
-      readingScore: 570,
-      mathScore: 570,
-      timeSpent: 3240,
-      module1: 9,
-      module2: 7,
-      module3: 5,
-      module4: 4,
-      isCurrentUser: false,
-    },
-    {
-      id: "user-20",
-      name: "ScoreMaster",
-      score: 1120,
-      readingScore: 560,
-      mathScore: 560,
-      timeSpent: 3420,
-      module1: 8,
-      module2: 6,
-      module3: 4,
-      module4: 3,
-      isCurrentUser: false,
-    },
-  ]
+  // Fetch current user's name from database
+  const [currentUserName, setCurrentUserName] = useState<string>('You')
+  
+  useEffect(() => {
+    async function fetchUserName() {
+      if (!isTempUser) {
+        const { getCurrentUserName } = await import('@/lib/auth')
+        const name = await getCurrentUserName()
+        setCurrentUserName(name)
+      } else {
+        setCurrentUserName('Guest')
+      }
+    }
+    fetchUserName()
+  }, [isTempUser])
 
-  // Current user's data (would come from actual test results)
+  // Current user's data from actual test results
   const currentUserData = testScore ? {
     id: "current-user",
-    name: "ThongJuice",
+    name: currentUserName,
     score: testScore.total,
     readingScore: testScore.readingWriting.scaledScore,
     mathScore: testScore.math.scaledScore,
@@ -819,7 +760,7 @@ export default function TestResultsPage() {
   // Only submit if all 4 modules are present
 
   // Calculate ranks based on current sort column and direction
-  const allLeaderboardEntries = dbLeaderboardData.length > 0 ? dbLeaderboardData : mockLeaderboardData
+  const allLeaderboardEntries = dbLeaderboardData
   const sortedForRanking = currentUserData ?
     [...allLeaderboardEntries, currentUserData].sort((a, b) => {
       const aVal = a[leaderboardSort.column as keyof typeof a] as number
@@ -878,7 +819,7 @@ export default function TestResultsPage() {
       if (!testIdParam) return
       
       try {
-        const { getLeaderboard } = await import("@/lib/supabase/test-attempts")
+        const { getLeaderboard } = await import("@/lib/supabase/test-results")
         const { getCurrentUserId } = await import("@/lib/auth")
         const { calculateTestScore } = await import("@/lib/scoring")
         
@@ -955,7 +896,7 @@ export default function TestResultsPage() {
           
           return {
             id: attempt.user_id,
-            name: attempt.user_id === currentUserId ? "ThongJuice" : `User${attempt.user_id.slice(0, 8)}`,
+            name: attempt.user_id === currentUserId ? currentUserName : `User${attempt.user_id.slice(0, 8)}`,
             score: score.total,
             readingScore: score.readingWriting.scaledScore,
             mathScore: score.math.scaledScore,
@@ -996,7 +937,7 @@ export default function TestResultsPage() {
         const testId = testIdParam || 1;
         
         // Import getTestAttempt dynamically to avoid SSR issues
-        const { getTestAttempt } = await import("@/lib/supabase/test-attempts");
+        const { getTestAttempt } = await import("@/lib/supabase/test-results");
         const { data, error } = await getTestAttempt(userId, testId);
         
         if (error || !data) {
@@ -1063,7 +1004,7 @@ export default function TestResultsPage() {
                 const options = fullQuestion?.answers?.map((ans: any) => ans.value) || [];
                 
                 return {
-                  id: `${key}-q${idx+1}`,
+                  id: fullQuestion?.id || `${key}-q${idx+1}`, // Use database UUID if available
                   moduleId: key,
                   questionNumber: q.question_number,
                   questionText: fullQuestion?.content?.[0]?.value || "",
@@ -1302,19 +1243,45 @@ export default function TestResultsPage() {
     setExpandedQuestions(newExpanded)
   }
 
-  const requestVideo = (questionId: string) => {
-    if (requestedVideos.has(questionId)) return
+  const requestVideo = async (questionId: string) => {
+    // Check if already requested/unlocked
+    if (userVideoRequests.includes(questionId)) {
+      return
+    }
 
-    if (remainingVideos > 0) {
-      setRemainingVideos(prev => prev - 1)
-      setRequestedVideos(prev => new Map(prev).set(questionId, 'pending'))
+    // Check if video exists (unlock for 10 gems) or doesn't exist (request for 10 gems)
+    const videoUrl = questionVideos.get(questionId)
+    const userId = getCurrentUserId()
 
-      // Simulate video becoming available after 2 seconds
-      setTimeout(() => {
-        setRequestedVideos(prev => new Map(prev).set(questionId, 'available'))
-      }, 2000)
+    if (!userId) {
+      console.error('[VIDEO REQUEST] No user ID found')
+      return
+    }
+
+    // Always check gems balance - both unlock and request cost 10 gems
+    if (gemsBalance < 10) {
+      console.error('[VIDEO REQUEST] Insufficient gems:', gemsBalance)
+      return
+    }
+
+    console.log('[VIDEO REQUEST] Attempting to unlock video for question:', questionId, 'User:', userId)
+
+    if (videoUrl) {
+      // Video exists - unlock for 10 gems
+      const result = await unlockVideo(userId, questionId)
+      console.log('[VIDEO REQUEST] Unlock result:', result)
+      if (result.success) {
+        setGemsBalance(result.remainingGems || 0)
+        setUserVideoRequests(prev => [...prev, questionId])
+      }
     } else {
-      alert("No free videos remaining.")
+      // Video doesn't exist - request for 10 gems (they get access when it's ready)
+      const result = await unlockVideo(userId, questionId) // Use unlockVideo to deduct gems
+      console.log('[VIDEO REQUEST] Request result:', result)
+      if (result.success) {
+        setGemsBalance(result.remainingGems || 0)
+        setUserVideoRequests(prev => [...prev, questionId])
+      }
     }
   }
 
@@ -1374,16 +1341,61 @@ export default function TestResultsPage() {
           <Card className="mb-8">
             <Tabs
               value={activeTab}
-              onValueChange={(value) => setActiveTab(value as 'score' | 'leaderboard' | 'progress')}
+              onValueChange={handleTabChange}
             >
               <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <TabsList className="w-full justify-start sm:w-auto">
                   <TabsTrigger value="score" className="px-4">Score Overview</TabsTrigger>
-                  <TabsTrigger value="leaderboard" className="px-4">Leaderboard</TabsTrigger>
-                  <TabsTrigger value="progress" className="px-4">Your Progress</TabsTrigger>
+                  <TabsTrigger value="leaderboard" className="px-4">
+                    Leaderboard
+                  </TabsTrigger>
+                  <TabsTrigger value="progress" className="px-4">
+                    Your Progress
+                  </TabsTrigger>
                 </TabsList>
               </CardHeader>
-              <CardContent className="pb-4">
+              <CardContent className="pb-4 relative">
+                {isTempUser && (activeTab === 'leaderboard' || activeTab === 'progress') && (
+                  <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/60 backdrop-blur-sm rounded-lg">
+                    <div className="text-center space-y-4 px-4 max-w-md">
+                      <div className="flex justify-center">
+                        <div className="w-16 h-16 rounded-full bg-background/90 border border-border flex items-center justify-center">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="32"
+                            height="32"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="text-muted-foreground"
+                          >
+                            <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                          </svg>
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-xl mb-2">
+                          {activeTab === 'leaderboard' ? 'Sign Up to View Leaderboard' : 'Sign Up to Track Progress'}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {activeTab === 'leaderboard' 
+                            ? 'Create a free account to compete with other students and see where you rank.'
+                            : 'Create a free account to track your improvement over time and see your score history.'}
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => setShowSignupModal(true)}
+                        className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                      >
+                        Sign Up Free
+                      </Button>
+                    </div>
+                  </div>
+                )}
                 <TabsContent value="score" className="mt-0 min-h-[480px]">
                   <div className="flex flex-col items-center justify-center gap-8">
                     <div className="relative h-60 w-60 sm:h-72 sm:w-72">
@@ -1518,6 +1530,7 @@ export default function TestResultsPage() {
 
                 <TabsContent value="leaderboard" className="mt-0 min-h-[480px]">
                   <div className="relative">
+                    
                     {showUserAtTop && currentUserEntry && (
                       <div className="absolute top-0 left-0 right-0 z-10 border-b bg-background/95 backdrop-blur">
                         <Table className="table-fixed">
@@ -1710,13 +1723,13 @@ export default function TestResultsPage() {
                                   </Badge>
                                 )}
                               </TableCell>
-                              <TableCell style={getColumnStyle('totalScore')} className="whitespace-nowrap text-right">{entry.score}</TableCell>
-                              <TableCell style={getColumnStyle('readingScore')} className="whitespace-nowrap text-right">{entry.readingScore}</TableCell>
-                              <TableCell style={getColumnStyle('mathScore')} className="whitespace-nowrap text-right">{entry.mathScore}</TableCell>
-                              <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{entry.module1}/27</TableCell>
-                              <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{entry.module2}/27</TableCell>
-                              <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{entry.module3}/22</TableCell>
-                              <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{entry.module4}/22</TableCell>
+                              {isFullView && <TableCell style={getColumnStyle('totalScore')} className="whitespace-nowrap text-right">{entry.score}</TableCell>}
+                              {!isMathView && <TableCell style={getColumnStyle('readingScore')} className="whitespace-nowrap text-right">{entry.readingScore}</TableCell>}
+                              {!isRWView && <TableCell style={getColumnStyle('mathScore')} className="whitespace-nowrap text-right">{entry.mathScore}</TableCell>}
+                              {!isMathView && <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{entry.module1}/27</TableCell>}
+                              {!isMathView && <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{entry.module2}/27</TableCell>}
+                              {!isRWView && <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{entry.module3}/22</TableCell>}
+                              {!isRWView && <TableCell style={getColumnStyle('module')} className="whitespace-nowrap text-right">{entry.module4}/22</TableCell>}
                               <TableCell style={getColumnStyle('time')} className="whitespace-nowrap text-right">{formatTimeSpent(entry.timeSpent)}</TableCell>
                             </TableRow>
                           ))}
@@ -1766,7 +1779,8 @@ export default function TestResultsPage() {
 
                 <TabsContent value="progress" className="mt-0 max-h-[480px]">
                   <div className="space-y-4">
-                    {chartData.length > 0 ? (
+                    
+                    {(isTempUser ? true : chartData.length > 0) ? (
                       <ChartContainer size="lg" className="w-full h-[520px]">
                         <ResponsiveContainer width="100%" height="100%">
                           <ComposedChart data={chartData} margin={{ top: 16, right: 24, bottom: 56, left: 0 }}>
@@ -1894,7 +1908,7 @@ export default function TestResultsPage() {
                   </Button>
                 )}
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 items-center">
                 <Button
                   variant="outline"
                   size="sm"
@@ -1954,7 +1968,45 @@ export default function TestResultsPage() {
                             </div>
                           </CardHeader>
                           {expandedQuestions.has(questionKey) && (
-                            <CardContent>
+                            <CardContent className="relative">
+                              {isTempUser && (
+                                <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-sm rounded-lg">
+                                  <div className="text-center space-y-4 px-4 max-w-md">
+                                    <div className="flex justify-center">
+                                      <div className="w-16 h-16 rounded-full bg-background/90 border border-border flex items-center justify-center">
+                                        <svg
+                                          xmlns="http://www.w3.org/2000/svg"
+                                          width="32"
+                                          height="32"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          className="text-muted-foreground"
+                                        >
+                                          <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                                          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                                        </svg>
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <h3 className="font-semibold text-lg mb-2">Sign Up to Review Questions</h3>
+                                      <p className="text-sm text-muted-foreground">
+                                        Create a free account to access detailed question review, explanations, and more.
+                                      </p>
+                                    </div>
+                                    <Button
+                                      onClick={() => setShowSignupModal(true)}
+                                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                                    >
+                                      Sign Up Free
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                              {/* Show full question content for all users, but blurred for temp users */}
                               <div className="space-y-4">
                                 <div className="text-base mb-4">
                                   {hasContentColumns ? (
@@ -2043,38 +2095,65 @@ export default function TestResultsPage() {
                                 )}
                                 <div className="flex justify-end">
                                   {(() => {
-                                    const videoStatus = requestedVideos.get(questionKey)
-                                    if (videoStatus === 'available') {
+                                    // Check if user has already unlocked this video
+                                    const hasUnlocked = userVideoRequests.includes(questionKey)
+                                    const videoUrl = questionVideos.get(questionKey)
+                                    
+                                    if (hasUnlocked && videoUrl) {
+                                      // User has unlocked video and it exists - show video player
                                       return (
                                         <div className="w-full">
-                                          <div className="bg-gray-100 p-4 rounded border">
+                                          <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded border">
                                             <p className="text-sm font-medium mb-2">Video Explanation</p>
-                                            <div className="aspect-video bg-gray-200 rounded flex items-center justify-center">
-                                              <p className="text-gray-500">Video player would appear here</p>
+                                            <div className="aspect-video bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
+                                              <video
+                                                controls
+                                                className="w-full h-full"
+                                                src={videoUrl}
+                                              >
+                                                Your browser does not support the video tag.
+                                              </video>
                                             </div>
                                           </div>
                                         </div>
                                       )
-                                    } else if (videoStatus === 'pending') {
+                                    } else if (hasUnlocked && !videoUrl) {
+                                      // User has requested video but it's not ready yet
                                       return (
                                         <Button variant="outline" size="sm" disabled>
-                                          Video explanation pending
+                                          Video explanation pending...
                                         </Button>
                                       )
                                     } else {
+                                      // User hasn't unlocked/requested yet
+                                      const videoExists = !!videoUrl // Check if videoUrl has a value
+                                      
                                       return (
                                         <Button
                                           variant="outline"
                                           size="sm"
-                                          onClick={() => requestVideo(questionKey)}
-                                          disabled={remainingVideos === 0}
+                                          onClick={() => isTempUser ? setShowSignupModal(true) : requestVideo(questionKey)}
+                                          className="gap-2"
                                         >
-                                          {remainingVideos === 0 ? (
+                                          {isTempUser ? (
                                             <>
-                                              Request Video Explanation ( 20<Gem className="h-4 w-4 text-orange-500"/>)
+                                              <Lock className="h-4 w-4" />
+                                              Sign up to unlock videos
+                                            </>
+                                          ) : videoExists ? (
+                                            <>
+                                              Unlock Video Explanation
+                                              <span className="flex items-center gap-0.5">
+                                                10<Gem className="h-3.5 w-3.5 fill-orange-500 text-orange-500" />
+                                              </span>
                                             </>
                                           ) : (
-                                            `Request Video Explanation (${remainingVideos} Remaining)`
+                                            <>
+                                              Request Video Explanation
+                                              <span className="flex items-center gap-0.5">
+                                                10<Gem className="h-3.5 w-3.5 fill-orange-500 text-orange-500" />
+                                              </span>
+                                            </>
                                           )}
                                         </Button>
                                       )
@@ -2105,6 +2184,16 @@ export default function TestResultsPage() {
           <ChevronUp className="h-5 w-5" />
         </Button>
       )}
+
+      {/* Signup Modal for Temp Users */}
+      <SignupModal
+        open={showSignupModal}
+        onOpenChange={setShowSignupModal}
+        tempUserId={getCurrentUserId()}
+        onSuccess={handleSignupSuccess}
+        title="Create an account to unlock all features"
+        description="Sign up to access leaderboards, track your progress, and unlock video explanations with 50 free gems!"
+      />
     </div>
   )
 }

@@ -2,293 +2,426 @@
 
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { BookOpen, BarChart, Trophy, Zap, ArrowRight, Sparkles, Target, Brain } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { BookOpen, Video, Calculator, Trophy, Users, ClipboardCheck, Building2, Palette, ArrowRight, CheckCircle2, Star, Play } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
+import Image from "next/image"
 
 export default function LandingPage() {
   const router = useRouter()
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-br from-background via-background to-primary/5">
-      {/* Floating Header */}
-      <header className="sticky top-4 z-50 mx-4 mt-4">
-        <div className="max-w-6xl mx-auto backdrop-blur-xl bg-background/80 border border-border/40 rounded-2xl shadow-lg">
-          <div className="flex h-16 items-center justify-between px-6">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600">
-                <BookOpen className="h-5 w-5 text-white" />
-              </div>
-              <span className="font-bold text-xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                RealSAT
-              </span>
+    <div className="flex min-h-screen flex-col">
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-lg">
+        <div className="max-w-7xl mx-auto flex h-16 items-center justify-between px-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
+              <BookOpen className="h-5 w-5 text-white" />
             </div>
-            <div className="flex items-center gap-4">
-              <ThemeToggle />
-              <Button 
-                onClick={() => router.push('/dashboard')}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg shadow-blue-500/25"
-              >
-                Dashboard
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
+            <span className="font-bold text-xl">RealSAT</span>
           </div>
+          <ThemeToggle />
         </div>
       </header>
 
-      <main className="flex-1">
-        {/* Hero Section with Gradient */}
-        <section className="relative py-24 px-4 overflow-hidden">
-          {/* Animated Background Gradients */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute top-20 -left-20 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse" />
-            <div className="absolute bottom-20 -right-20 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-          </div>
-
-          <div className="max-w-5xl mx-auto text-center relative z-10">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 mb-6">
-              <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              <span className="text-sm font-medium bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Authentic Digital SAT Practice
-              </span>
-            </div>
-            
-            <h1 className="text-6xl md:text-7xl font-bold tracking-tight mb-6">
-              <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                Ace the SAT
-              </span>
-              <br />
-              <span className="text-foreground">with Confidence</span>
-            </h1>
-            
-            <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
-              Full-length practice tests, instant feedback, and powerful analytics. 
-              Everything you need to reach your target score.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
-                size="lg" 
-                onClick={() => router.push('/dashboard')} 
-                className="text-lg px-10 py-7 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-2xl shadow-blue-500/30 rounded-xl"
-              >
-                Start Practicing Free
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-8 mt-16 max-w-2xl mx-auto">
-              <div className="text-center">
-                <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">98</div>
-                <div className="text-sm text-muted-foreground">Questions per test</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">134</div>
-                <div className="text-sm text-muted-foreground">Minutes of practice</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-orange-600 bg-clip-text text-transparent">1600</div>
-                <div className="text-sm text-muted-foreground">Perfect score</div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Features Section - Glassmorphism Cards */}
-        <section className="py-20 px-4">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold mb-4">
-                <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Built for Success
-                </span>
-              </h2>
-              <p className="text-lg text-muted-foreground">Everything you need in one powerful platform</p>
-            </div>
-
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {/* Feature Cards with Glassmorphism */}
-              <div className="group relative backdrop-blur-xl bg-gradient-to-br from-blue-500/5 to-blue-500/10 border border-blue-500/20 rounded-2xl p-6 hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300 hover:-translate-y-1">
-                <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 mb-4 shadow-lg shadow-blue-500/30">
-                  <BookOpen className="h-7 w-7 text-white" />
-                </div>
-                <h3 className="text-xl font-bold mb-2">Full-Length Tests</h3>
-                <p className="text-muted-foreground">
-                  Complete authentic practice tests with real timing and format
-                </p>
-              </div>
-
-              <div className="group relative backdrop-blur-xl bg-gradient-to-br from-purple-500/5 to-purple-500/10 border border-purple-500/20 rounded-2xl p-6 hover:shadow-xl hover:shadow-purple-500/10 transition-all duration-300 hover:-translate-y-1">
-                <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 mb-4 shadow-lg shadow-purple-500/30">
-                  <BarChart className="h-7 w-7 text-white" />
-                </div>
-                <h3 className="text-xl font-bold mb-2">Smart Analytics</h3>
-                <p className="text-muted-foreground">
-                  Track progress with detailed score breakdowns and performance charts
-                </p>
-              </div>
-
-              <div className="group relative backdrop-blur-xl bg-gradient-to-br from-pink-500/5 to-pink-500/10 border border-pink-500/20 rounded-2xl p-6 hover:shadow-xl hover:shadow-pink-500/10 transition-all duration-300 hover:-translate-y-1">
-                <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-pink-500 to-pink-600 mb-4 shadow-lg shadow-pink-500/30">
-                  <Trophy className="h-7 w-7 text-white" />
-                </div>
-                <h3 className="text-xl font-bold mb-2">Global Leaderboard</h3>
-                <p className="text-muted-foreground">
-                  Compete with students worldwide and see where you rank
-                </p>
-              </div>
-
-              <div className="group relative backdrop-blur-xl bg-gradient-to-br from-orange-500/5 to-orange-500/10 border border-orange-500/20 rounded-2xl p-6 hover:shadow-xl hover:shadow-orange-500/10 transition-all duration-300 hover:-translate-y-1">
-                <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 mb-4 shadow-lg shadow-orange-500/30">
-                  <Zap className="h-7 w-7 text-white" />
-                </div>
-                <h3 className="text-xl font-bold mb-2">Instant Feedback</h3>
-                <p className="text-muted-foreground">
-                  Get immediate scores and explanations after every module
-                </p>
-              </div>
-
-              <div className="group relative backdrop-blur-xl bg-gradient-to-br from-green-500/5 to-green-500/10 border border-green-500/20 rounded-2xl p-6 hover:shadow-xl hover:shadow-green-500/10 transition-all duration-300 hover:-translate-y-1">
-                <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-green-500 to-green-600 mb-4 shadow-lg shadow-green-500/30">
-                  <Target className="h-7 w-7 text-white" />
-                </div>
-                <h3 className="text-xl font-bold mb-2">Question Review</h3>
-                <p className="text-muted-foreground">
-                  Deep dive into every question with detailed answer explanations
-                </p>
-              </div>
-
-              <div className="group relative backdrop-blur-xl bg-gradient-to-br from-cyan-500/5 to-cyan-500/10 border border-cyan-500/20 rounded-2xl p-6 hover:shadow-xl hover:shadow-cyan-500/10 transition-all duration-300 hover:-translate-y-1">
-                <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-600 mb-4 shadow-lg shadow-cyan-500/30">
-                  <Brain className="h-7 w-7 text-white" />
-                </div>
-                <h3 className="text-xl font-bold mb-2">Real Experience</h3>
-                <p className="text-muted-foreground">
-                  Practice with the exact interface used on test day
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Test Structure - Modern Split Design */}
-        <section className="py-20 px-4">
-          <div className="max-w-5xl mx-auto">
-            <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold mb-4">
-                <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Test Format
-                </span>
-              </h2>
-              <p className="text-lg text-muted-foreground">Two sections, four modules, one goal</p>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Reading & Writing */}
-              <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl blur-xl opacity-20 group-hover:opacity-30 transition-opacity" />
-                <div className="relative backdrop-blur-xl bg-background/90 border border-blue-500/30 rounded-3xl p-8 space-y-6">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg shadow-blue-500/30">
-                      <BookOpen className="h-8 w-8 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold">Reading & Writing</h3>
-                      <p className="text-muted-foreground">Modules 1 & 2</p>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center p-4 rounded-xl bg-blue-500/5 border border-blue-500/10">
-                      <span className="text-muted-foreground">Duration</span>
-                      <span className="font-semibold">64 minutes</span>
-                    </div>
-                    <div className="flex justify-between items-center p-4 rounded-xl bg-blue-500/5 border border-blue-500/10">
-                      <span className="text-muted-foreground">Questions</span>
-                      <span className="font-semibold">54 total</span>
-                    </div>
-                    <div className="flex justify-between items-center p-4 rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20">
-                      <span className="text-muted-foreground">Score Range</span>
-                      <span className="font-bold text-lg bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">200-800</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Math */}
-              <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-br from-orange-500 to-pink-600 rounded-3xl blur-xl opacity-20 group-hover:opacity-30 transition-opacity" />
-                <div className="relative backdrop-blur-xl bg-background/90 border border-orange-500/30 rounded-3xl p-8 space-y-6">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-pink-600 shadow-lg shadow-orange-500/30">
-                      <Zap className="h-8 w-8 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold">Mathematics</h3>
-                      <p className="text-muted-foreground">Modules 3 & 4</p>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center p-4 rounded-xl bg-orange-500/5 border border-orange-500/10">
-                      <span className="text-muted-foreground">Duration</span>
-                      <span className="font-semibold">70 minutes</span>
-                    </div>
-                    <div className="flex justify-between items-center p-4 rounded-xl bg-orange-500/5 border border-orange-500/10">
-                      <span className="text-muted-foreground">Questions</span>
-                      <span className="font-semibold">44 total</span>
-                    </div>
-                    <div className="flex justify-between items-center p-4 rounded-xl bg-gradient-to-r from-orange-500/10 to-pink-500/10 border border-orange-500/20">
-                      <span className="text-muted-foreground">Score Range</span>
-                      <span className="font-bold text-lg bg-gradient-to-r from-orange-600 to-pink-600 bg-clip-text text-transparent">200-800</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* CTA Section - Gradient Background */}
-        <section className="relative py-24 px-4 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-pink-600/10" />
-          <div className="absolute inset-0 backdrop-blur-3xl" />
-          
-          <div className="max-w-4xl mx-auto text-center relative z-10">
-            <h2 className="text-5xl font-bold mb-6">
-              <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                Ready to Begin?
-              </span>
-            </h2>
-            <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
-              Join thousands of students mastering the SAT with our comprehensive practice platform
-            </p>
-            <Button 
-              size="lg" 
-              onClick={() => router.push('/dashboard')} 
-              className="text-lg px-10 py-7 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-2xl shadow-blue-500/30 rounded-xl"
-            >
-              Open Dashboard
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-          </div>
-        </section>
-      </main>
-
-      <footer className="border-t backdrop-blur-xl bg-background/80 py-8 px-4">
-        <div className="max-w-6xl mx-auto text-center">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600">
-              <BookOpen className="h-4 w-4 text-white" />
-            </div>
-            <span className="font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              RealSAT
+      {/* Hero Section with Background */}
+      <section className="relative py-32 px-6 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-blue-950/20 dark:via-purple-950/20 dark:to-pink-950/20">
+        <div className="max-w-5xl mx-auto text-center">
+          <h1 className="text-6xl md:text-7xl font-bold mb-6 tracking-tight">
+            One Platform.<br />
+            <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+              Every User.
             </span>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            © 2024 RealSAT • Your path to SAT success
+          </h1>
+          <p className="text-2xl text-muted-foreground mb-4">
+            RealSAT transforms Digital SAT preparation for students, educators, and institutions.
           </p>
+          <p className="text-lg text-muted-foreground mb-12">
+            Choose your role to explore how RealSAT works
+          </p>
+        </div>
+      </section>
+
+      {/* Tabbed Content */}
+      <section className="py-12 px-6">
+        <div className="max-w-6xl mx-auto">
+          <Tabs defaultValue="students" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 h-auto gap-2 bg-muted p-2 rounded-xl">
+              <TabsTrigger 
+                value="students" 
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white py-4"
+              >
+                <BookOpen className="h-5 w-5 mr-2" />
+                <span className="font-semibold">Students</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="teachers"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-600 data-[state=active]:text-white py-4"
+              >
+                <Users className="h-5 w-5 mr-2" />
+                <span className="font-semibold">Teachers</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="schools"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-600 data-[state=active]:text-white py-4"
+              >
+                <Building2 className="h-5 w-5 mr-2" />
+                <span className="font-semibold">Schools</span>
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Students Tab */}
+            <TabsContent value="students" className="mt-8">
+              <div className="space-y-8">
+                {/* Hero Section for Students */}
+                <div className="text-center mb-12">
+                  <h2 className="text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    Self-Study with Expert Guidance
+                  </h2>
+                  <p className="text-muted-foreground text-xl max-w-3xl mx-auto mb-8">
+                    Master the Digital SAT with video explanations from a real SAT teacher—no boring textbook answers, 
+                    just practical hacks and time-saving strategies.
+                  </p>
+                  <Button 
+                    size="lg" 
+                    onClick={() => router.push('/test/module/1/intro?testId=1')} 
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-10 py-6 text-lg shadow-lg"
+                  >
+                    Take a Free Test Now
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                  <p className="text-sm text-muted-foreground mt-4">No account required to start • Sign up to save your progress</p>
+                </div>
+
+                {/* Screenshots Grid */}
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+                  {/* Test Interface Screenshot */}
+                  <Card className="border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-blue-600/5 hover:shadow-xl transition-shadow">
+                    <CardContent className="p-6">
+                      <div className="aspect-video bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 rounded-lg mb-4 flex items-center justify-center">
+                        <Calculator className="h-16 w-16 text-blue-600 dark:text-blue-300" />
+                      </div>
+                      <h3 className="font-bold text-lg mb-2">Real Test Interface</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Practice with the exact same interface and Desmos calculator as the real Digital SAT
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  {/* Dashboard Screenshot */}
+                  <Card className="border-blue-500/20 bg-gradient-to-br from-purple-500/5 to-purple-600/5 hover:shadow-xl transition-shadow">
+                    <CardContent className="p-6">
+                      <div className="aspect-video bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800 rounded-lg mb-4 flex items-center justify-center">
+                        <BookOpen className="h-16 w-16 text-purple-600 dark:text-purple-300" />
+                      </div>
+                      <h3 className="font-bold text-lg mb-2">Your Dashboard</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Track all your tests, progress, and achievements in one clean dashboard
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  {/* Progress Charts Screenshot */}
+                  <Card className="border-blue-500/20 bg-gradient-to-br from-pink-500/5 to-pink-600/5 hover:shadow-xl transition-shadow">
+                    <CardContent className="p-6">
+                      <div className="aspect-video bg-gradient-to-br from-pink-100 to-pink-200 dark:from-pink-900 dark:to-pink-800 rounded-lg mb-4 flex items-center justify-center">
+                        <Trophy className="h-16 w-16 text-pink-600 dark:text-pink-300" />
+                      </div>
+                      <h3 className="font-bold text-lg mb-2">Progress Charts</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Visualize your score improvement over time with detailed analytics
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  {/* Video Explanation GIF Placeholder */}
+                  <Card className="border-blue-500/20 bg-gradient-to-br from-orange-500/5 to-orange-600/5 hover:shadow-xl transition-shadow lg:col-span-2">
+                    <CardContent className="p-6">
+                      <div className="aspect-video bg-gradient-to-br from-orange-100 to-orange-200 dark:from-orange-900 dark:to-orange-800 rounded-lg mb-4 flex items-center justify-center relative">
+                        <Video className="h-20 w-20 text-orange-600 dark:text-orange-300" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-16 h-16 rounded-full bg-white/90 dark:bg-black/90 flex items-center justify-center">
+                            <Play className="h-8 w-8 text-orange-600 dark:text-orange-300 ml-1" />
+                          </div>
+                        </div>
+                      </div>
+                      <h3 className="font-bold text-lg mb-2">Expert Video Explanations</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Watch a real SAT teacher explain every problem with shortcuts, hacks, and time-saving techniques—not lengthy textbook explanations
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  {/* Leaderboard Screenshot */}
+                  <Card className="border-blue-500/20 bg-gradient-to-br from-teal-500/5 to-teal-600/5 hover:shadow-xl transition-shadow">
+                    <CardContent className="p-6">
+                      <div className="aspect-video bg-gradient-to-br from-teal-100 to-teal-200 dark:from-teal-900 dark:to-teal-800 rounded-lg mb-4 flex items-center justify-center">
+                        <Star className="h-16 w-16 text-teal-600 dark:text-teal-300" />
+                      </div>
+                      <h3 className="font-bold text-lg mb-2">Global Leaderboards</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Compete with students worldwide and see how you rank on each test
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Feature List */}
+                <div className="grid md:grid-cols-3 gap-6">
+                  <div className="flex gap-4 p-6 rounded-xl border bg-gradient-to-br from-blue-500/5 to-purple-500/5 hover:shadow-md transition-shadow">
+                    <Video className="h-10 w-10 text-blue-600 flex-shrink-0" />
+                    <div>
+                      <h3 className="font-bold text-lg mb-2">No Boring Explanations</h3>
+                      <p className="text-muted-foreground text-sm">
+                        Get quick videos from a real teacher with proven shortcuts—not wall-of-text proper math and english explanations from Bluebook
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4 p-6 rounded-xl border bg-gradient-to-br from-purple-500/5 to-pink-500/5 hover:shadow-md transition-shadow">
+                    <Calculator className="h-10 w-10 text-purple-600 flex-shrink-0" />
+                    <div>
+                      <h3 className="font-bold text-lg mb-2">Authentic Test Experience</h3>
+                      <p className="text-muted-foreground text-sm">
+                        Same interface, timing, and calculator as the real Digital SAT—practice like it's test day
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4 p-6 rounded-xl border bg-gradient-to-br from-pink-500/5 to-orange-500/5 hover:shadow-md transition-shadow">
+                    <Trophy className="h-10 w-10 text-pink-600 flex-shrink-0" />
+                    <div>
+                      <h3 className="font-bold text-lg mb-2">Track & Compete</h3>
+                      <p className="text-muted-foreground text-sm">
+                        Global leaderboards and detailed analytics show your progress and keep you motivated
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Final CTA */}
+                <div className="text-center pt-8">
+                  <Button 
+                    size="lg" 
+                    onClick={() => router.push('/test/module/1/intro?testId=1')} 
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-12 py-6 text-lg shadow-lg"
+                  >
+                    Start Your Free Practice Test
+                    <ArrowRight className="ml-2 h-6 w-6" />
+                  </Button>
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Teachers Tab */}
+            <TabsContent value="teachers" className="mt-8">
+              <div className="grid md:grid-cols-2 gap-8 mb-8">
+                <div className="grid grid-cols-1 gap-4">
+                  <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-teal-500/5">
+                    <CardContent className="p-6">
+                      <Users className="h-10 w-10 text-emerald-500 mb-3" />
+                      <h3 className="font-bold mb-2">All Classes in One View</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Manage 1-on-1 and group classes. See who completed tests and track progress instantly.
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-emerald-500/20 bg-gradient-to-br from-teal-500/5 to-emerald-600/5">
+                    <CardContent className="p-6">
+                      <ClipboardCheck className="h-10 w-10 text-emerald-500 mb-3" />
+                      <h3 className="font-bold mb-2">Class-Wide Test Results</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Click any test to view aggregated results—every student's answers and scores in one place
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-600/5 to-teal-600/5">
+                    <CardContent className="p-6">
+                      <Star className="h-10 w-10 text-emerald-500 mb-3" />
+                      <h3 className="font-bold mb-2">Filter & Analyze</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Filter by student name, question type, or difficulty. Student emails are private—only names visible.
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-4xl font-bold mb-3 bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">Manage Classes & Track Success</h2>
+                    <p className="text-muted-foreground text-lg">
+                      Whether you teach 1-on-1 or manage multiple classes, RealSAT gives you a complete 
+                      view of student performance and progress.
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex gap-3">
+                      <CheckCircle2 className="h-6 w-6 text-emerald-500 flex-shrink-0 mt-1" />
+                      <div>
+                        <h3 className="font-semibold mb-1">Unified Class Management</h3>
+                        <p className="text-sm text-muted-foreground">
+                          All your classes and students organized in one intuitive dashboard
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-3">
+                      <CheckCircle2 className="h-6 w-6 text-emerald-500 flex-shrink-0 mt-1" />
+                      <div>
+                        <h3 className="font-semibold mb-1">Instant Test Analytics</h3>
+                        <p className="text-sm text-muted-foreground">
+                          See which questions students missed and identify learning gaps immediately
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-3">
+                      <CheckCircle2 className="h-6 w-6 text-emerald-500 flex-shrink-0 mt-1" />
+                      <div>
+                        <h3 className="font-semibold mb-1">Privacy Protected</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Teachers can filter by student name but cannot see email addresses
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button size="lg" onClick={() => router.push('/teacher')} className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white w-full">
+                    Access Teacher Dashboard
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Schools Tab */}
+            <TabsContent value="schools" className="mt-8">
+              <div className="space-y-8">
+                <div className="text-center max-w-3xl mx-auto">
+                  <h2 className="text-4xl font-bold mb-3 bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">Complete School Management</h2>
+                  <p className="text-muted-foreground text-lg">
+                    Administrators organize programs and track results. School owners control branding, billing, and permissions.
+                  </p>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* Administrators */}
+                  <Card className="border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-orange-500/5">
+                    <CardContent className="p-8">
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
+                          <Building2 className="h-6 w-6 text-white" />
+                        </div>
+                        <h3 className="text-2xl font-bold">For Administrators</h3>
+                      </div>
+
+                      <div className="space-y-4 mb-6">
+                        <div className="flex gap-3">
+                          <CheckCircle2 className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-semibold">Create & Organize Classrooms</p>
+                            <p className="text-sm text-muted-foreground">Set up classes and manage student-teacher assignments</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-3">
+                          <CheckCircle2 className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-semibold">Invite Students & Teachers</p>
+                            <p className="text-sm text-muted-foreground">Send email invitations to add users to your school</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-3">
+                          <CheckCircle2 className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-semibold">Assign & Track Tests</p>
+                            <p className="text-sm text-muted-foreground">Assign tests to classes and view aggregated score analytics</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-3">
+                          <CheckCircle2 className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-semibold">Question Type Insights</p>
+                            <p className="text-sm text-muted-foreground">Identify which question types each class struggles with most</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <Button size="lg" onClick={() => router.push('/school')} className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white">
+                        Admin Dashboard
+                        <ArrowRight className="ml-2 h-5 w-5" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* School Owners */}
+                  <Card className="border-orange-500/20 bg-gradient-to-br from-orange-500/5 to-orange-600/5">
+                    <CardContent className="p-8">
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
+                          <Palette className="h-6 w-6 text-white" />
+                        </div>
+                        <h3 className="text-2xl font-bold">For School Owners</h3>
+                      </div>
+
+                      <div className="space-y-4 mb-6">
+                        <div className="flex gap-3">
+                          <CheckCircle2 className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-semibold">Custom Branding</p>
+                            <p className="text-sm text-muted-foreground">Upload your logo and customize theme colors</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-3">
+                          <CheckCircle2 className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-semibold">Payment Management</p>
+                            <p className="text-sm text-muted-foreground">Add and manage payment methods for your school subscription</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-3">
+                          <CheckCircle2 className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-semibold">Create Admin Accounts</p>
+                            <p className="text-sm text-muted-foreground">Grant administrator access to trusted staff members</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-3">
+                          <CheckCircle2 className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-semibold">Full Permission Control</p>
+                            <p className="text-sm text-muted-foreground">Manage access levels and permissions across your school</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <Button size="lg" onClick={() => router.push('/admin')} variant="outline" className="w-full border-2 border-orange-500/50 hover:bg-orange-500/10">
+                        Owner Dashboard
+                        <ArrowRight className="ml-2 h-5 w-5" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t py-12 px-6 mt-auto bg-muted/30">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
+                <BookOpen className="h-5 w-5 text-white" />
+              </div>
+              <span className="font-bold text-xl">RealSAT</span>
+            </div>
+            <p className="text-sm text-muted-foreground text-center">
+              © 2024 RealSAT • Complete Digital SAT Platform for Students, Teachers, and Schools
+            </p>
+          </div>
         </div>
       </footer>
     </div>

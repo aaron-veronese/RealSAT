@@ -5,10 +5,11 @@ import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Clock, BookOpen, Calculator, Brain, ArrowRight, Home } from "lucide-react"
-import { getCurrentUserId } from "@/lib/auth"
+import { getCurrentUserId, isCurrentUserTemp } from "@/lib/auth"
 import { getQuestionsByModule } from "@/lib/supabase/questions"
-import { getTestAttempt, createTestAttempt } from "@/lib/supabase/test-attempts"
+import { getTestAttempt, createTestAttempt } from "@/lib/supabase/test-results"
 import type { ModuleQuestion } from "@/types/db"
+import { SignupModal } from "@/components/signup-modal"
 
 export default function ModuleIntroPage() {
   const params = useParams()
@@ -21,6 +22,7 @@ export default function ModuleIntroPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showRWResults, setShowRWResults] = useState(false)
+  const [showSignupModal, setShowSignupModal] = useState(false)
 
   const getModuleTitle = () => {
     switch (moduleId) {
@@ -141,6 +143,25 @@ export default function ModuleIntroPage() {
       setError("An unexpected error occurred")
       setIsLoading(false)
     }
+  }
+
+  const handleReturnToDashboard = () => {
+    // Check if temp user and prompt signup
+    if (isCurrentUserTemp()) {
+      setShowSignupModal(true)
+    } else {
+      router.push('/student')
+    }
+  }
+
+  const handleViewRWResults = () => {
+    // Allow both temp and authenticated users to view their results
+    router.push(`/test/results?testId=${testId}&section=rw`)
+  }
+
+  const handleSignupSuccess = () => {
+    setShowSignupModal(false)
+    router.push('/student')
   }
 
   const handleBeginModule = () => {
@@ -290,7 +311,7 @@ export default function ModuleIntroPage() {
         <CardFooter className="flex justify-between">
           <Button
             size="lg"
-            onClick={() => router.push('/')}
+            onClick={handleReturnToDashboard}
             variant="outline"
             className="gap-2 bg-orange-400 hover:bg-orange-500 text-white border-orange-400 hover:border-orange-500"
           >
@@ -302,7 +323,7 @@ export default function ModuleIntroPage() {
           {moduleId === 3 && showRWResults && (
             <Button
               size="lg"
-              onClick={() => router.push(`/test/results?testId=${testId}&section=rw`)}
+              onClick={handleViewRWResults}
               variant="outline"
               className="gap-2 bg-sky-500 hover:bg-sky-600 text-white border-sky-500 hover:border-sky-600"
             >
@@ -321,6 +342,15 @@ export default function ModuleIntroPage() {
           </Button>
         </CardFooter>
       </Card>
+
+      <SignupModal
+        open={showSignupModal}
+        onOpenChange={setShowSignupModal}
+        tempUserId={userId}
+        onSuccess={handleSignupSuccess}
+        title="Sign up to access this feature"
+        description="Create an account to save your progress, view detailed analytics, and access all features."
+      />
     </div>
   )
 }

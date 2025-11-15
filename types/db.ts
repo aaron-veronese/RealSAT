@@ -1,6 +1,6 @@
 export interface DBQuestion {
   id: string;
-  test_id: number;
+  test_id: number | null; // Nullable for custom questions
   module_number: number;
   question_number: number;
   content: Array<{ type: string; value: string }>;
@@ -8,6 +8,7 @@ export interface DBQuestion {
   correct_answer: string;
   section: 'MATH' | 'READING';
   tags: string[] | null;
+  custom_tags?: string[] | null; // New field for custom categorization
   attempted: number | null;
   correct: number | null;
   difficulty: number | null;
@@ -38,7 +39,7 @@ export interface TestAttemptModules {
   [key: string]: TestModule; // e.g., "module_1", "module_2", etc.
 }
 
-export interface DBTestAttempt {
+export interface DBTestResult {
   id: string;
   test_id: number;
   user_id: string;
@@ -50,14 +51,49 @@ export interface DBTestAttempt {
   total_score: number | null;
   created_at: string;
   last_modified: string;
+  completed_at?: string; // New field to track completion timestamp
 }
+
+// Keep legacy type alias for backwards compatibility during migration
+export type DBTestAttempt = DBTestResult;
 
 export interface DBUser {
   id: string;
   email: string;
   username: string;
-  role: 'STUDENT' | 'TEACHER' | 'ADMIN';
+  name?: string; // New field for full name
+  role: 'STUDENT' | 'TEACHER' | 'ADMIN' | 'OWNER';
   school_id: string | null;
   gems_balance: number | null;
+  video_requests?: number[]; // New field for requested question IDs
+  created_at: string;
+}
+
+export interface DBSchool {
+  id: string;
+  name: string;
+  branding?: {
+    logo?: string;
+    plan?: string;
+    url?: string;
+    theme?: Record<string, any>;
+    [key: string]: any;
+  };
+  created_at: string;
+}
+
+export interface DBClassroom {
+  id: string;
+  name: string;
+  school_id: string;
+  students: string[]; // Array of user IDs
+  teachers: string[]; // Array of user IDs
+  schedule?: {
+    meeting_times?: string[];
+    timezone?: string;
+    [key: string]: any;
+  };
+  assigned_tests?: number[]; // Array of test IDs
+  section?: string; // e.g., "Period 3", "A Block"
   created_at: string;
 }
