@@ -1,10 +1,10 @@
-# RealSAT - Digital SAT Practice Platform
+# skoon. - Digital SAT Practice Platform
 
 A full-stack web application providing an authentic Digital SAT testing experience with adaptive modules, real-time scoring, and comprehensive performance analytics.
 
 ## 🎯 Overview
 
-RealSAT is a modern SAT preparation platform that replicates the official Digital SAT format, featuring adaptive testing algorithms, detailed performance tracking, and competitive leaderboards. Built with Next.js 14 and Supabase, it delivers a seamless, responsive testing experience.
+skoon. is a modern SAT preparation platform that replicates the official Digital SAT format, featuring adaptive testing algorithms, detailed performance tracking, and competitive leaderboards. Built with Next.js 14 and Supabase, it delivers a seamless, responsive testing experience.
 
 ## 📸 Screenshots
 
@@ -96,7 +96,7 @@ RealSAT is a modern SAT preparation platform that replicates the official Digita
 ## 📁 Project Structure
 
 ```
-RealSAT/
+skoon./
 ├── app/                          # Next.js app router
 │   ├── test/
 │   │   ├── module/[id]/         # Test module pages
@@ -215,3 +215,15 @@ Built as a demonstration of full-stack development capabilities including:
 ---
 
 *This project showcases proficiency in building production-ready web applications with modern technologies and best practices.*
+
+## 📄 PDF parsing scripts
+
+There are scripts to extract questions from practice PDF files and convert them to a JSON format suitable for importing into the database.
+
+Usage:
+```
+npm run parse:pdf -- ./public/testpdf/PRACTICE\ TEST\ 90.pdf --testId=90 --out=parsed_90.json
+node scripts/json_to_sql.js parsed_90.json > update_questions.sql
+```
+
+Notes: The parsing is heuristic and needs manual validation; it will not extract images. Use the exported SQL to update the `questions` table in Supabase.

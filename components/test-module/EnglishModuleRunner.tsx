@@ -3,7 +3,7 @@ import { useSearchParams } from "next/navigation"
 import { useState, useEffect, useRef } from "react"
 import { useTestModuleBase } from "./useTestModuleBase"
 import type { TestQuestion } from "@/lib/types"
-import { TestModuleShell } from "./TestModuleShell"
+import TestModuleShell from "./TestModuleShell"
 
 export function EnglishModuleRunner({ moduleId, testId }: { moduleId: number; testId: number }) {
   const searchParams = useSearchParams()
@@ -35,6 +35,7 @@ export function EnglishModuleRunner({ moduleId, testId }: { moduleId: number; te
     { partIndex: number; lineIndex: number; start: number; end: number; text: string }[]
   >([])
   const [isFillFocused, setIsFillFocused] = useState(false)
+  const [crossouts, setCrossouts] = useState<string[]>([])
 
   // Load highlights for current question
   useEffect(() => {
@@ -46,6 +47,30 @@ export function EnglishModuleRunner({ moduleId, testId }: { moduleId: number; te
       setHighlights([])
     }
   }, [moduleId, currentQuestion])
+
+  // Load crossouts for current question
+  useEffect(() => {
+    const key = `module-${moduleId}-q${currentQuestion}-crossouts`
+    try {
+      const saved = sessionStorage.getItem(key)
+      setCrossouts(saved ? JSON.parse(saved) : [])
+    } catch {
+      setCrossouts([])
+    }
+  }, [moduleId, currentQuestion])
+
+  const persistCrossouts = (next: string[]) => {
+    const key = `module-${moduleId}-q${currentQuestion}-crossouts`
+    sessionStorage.setItem(key, JSON.stringify(next))
+  }
+
+  const toggleCrossout = (k: string) => {
+    setCrossouts(prev => {
+      const next = prev.includes(k) ? prev.filter(x => x !== k) : [...prev, k]
+      persistCrossouts(next)
+      return next
+    })
+  }
 
   const persistHighlights = (h: typeof highlights) => {
     const key = `module-${moduleId}-q${currentQuestion}-highlights`
@@ -169,6 +194,8 @@ export function EnglishModuleRunner({ moduleId, testId }: { moduleId: number; te
       highlights={highlights}
       onClearHighlights={clearHighlights}
       onSelectionHighlight={handleSelectionHighlight}
+      crossouts={crossouts}
+      toggleCrossout={toggleCrossout}
       showCalculator={false}
       contentRef={contentRef}
     />

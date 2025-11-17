@@ -3,7 +3,7 @@ import { useSearchParams } from "next/navigation"
 import { useState, useEffect, useRef } from "react"
 import { useTestModuleBase } from "./useTestModuleBase"
 import type { TestQuestion } from "@/lib/types"
-import { TestModuleShell } from "./TestModuleShell"
+import TestModuleShell from "./TestModuleShell"
 import { Calculator } from "lucide-react"
 
 declare global {
@@ -189,6 +189,18 @@ export function MathModuleRunner({ moduleId, testId }: { moduleId: number; testI
     : []
 
   const [isFillFocused, setIsFillFocused] = useState(false)
+  const [crossouts, setCrossouts] = useState<string[]>([])
+
+  // Load crossouts for current question
+  useEffect(() => {
+    const key = `module-${moduleId}-q${currentQuestion}-crossouts`
+    try {
+      const saved = sessionStorage.getItem(key)
+      setCrossouts(saved ? JSON.parse(saved) : [])
+    } catch {
+      setCrossouts([])
+    }
+  }, [moduleId, currentQuestion])
   if (timeLeft === null) return null
 
   return (
@@ -214,6 +226,14 @@ export function MathModuleRunner({ moduleId, testId }: { moduleId: number; testI
       highlights={[]}
       onClearHighlights={() => {}}
       onSelectionHighlight={() => {}}
+      crossouts={crossouts}
+      toggleCrossout={(k) => {
+        setCrossouts(prev => {
+          const next = prev.includes(k) ? prev.filter(x => x !== k) : [...prev, k]
+          try { const key = `module-${moduleId}-q${currentQuestion}-crossouts`; sessionStorage.setItem(key, JSON.stringify(next)) } catch {}
+          return next
+        })
+      }}
       showCalculator={showCalculator}
       toggleCalculator={toggleCalculator}
       calculatorOverlay={calculatorOverlay}

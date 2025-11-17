@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BookOpen, Video, Calculator, Trophy, Users, ClipboardCheck, Building2, Palette, ArrowRight, CheckCircle2, Star, Play } from "lucide-react"
+import { TopPerformers } from '@/components/TopPerformers'
 import { ThemeToggle } from "@/components/theme-toggle"
 import Image from "next/image"
 
@@ -20,14 +21,14 @@ export default function LandingPage() {
             <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
               <BookOpen className="h-5 w-5 text-white" />
             </div>
-            <span className="font-bold text-xl">RealSAT</span>
+            <span className="font-bold text-xl">skoon.</span>
           </div>
           <ThemeToggle />
         </div>
       </header>
 
       {/* Hero Section with Background */}
-      <section className="relative py-32 px-6 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-blue-950/20 dark:via-purple-950/20 dark:to-pink-950/20">
+      <section className="relative py-32 px-6 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-blue-950/20 dark:via-purple-950/20 dark:to-pink-950/20 hero-animated">
         <div className="max-w-5xl mx-auto text-center">
           <h1 className="text-6xl md:text-7xl font-bold mb-6 tracking-tight">
             One Platform.<br />
@@ -36,10 +37,10 @@ export default function LandingPage() {
             </span>
           </h1>
           <p className="text-2xl text-muted-foreground mb-4">
-            RealSAT transforms Digital SAT preparation for students, educators, and institutions.
+            skoon. transforms Digital SAT preparation for students, educators, and institutions.
           </p>
           <p className="text-lg text-muted-foreground mb-12">
-            Choose your role to explore how RealSAT works
+            Choose your role to explore how skoon. works
           </p>
         </div>
       </section>
@@ -76,7 +77,7 @@ export default function LandingPage() {
             <TabsContent value="students" className="mt-8">
               <div className="space-y-8">
                 {/* Hero Section for Students */}
-                <div className="text-center mb-12">
+                  <div className="text-center mb-12">
                   <h2 className="text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                     Self-Study with Expert Guidance
                   </h2>
@@ -84,7 +85,8 @@ export default function LandingPage() {
                     Master the Digital SAT with video explanations from a real SAT teacher—no boring textbook answers, 
                     just practical hacks and time-saving strategies.
                   </p>
-                  <Button 
+                  <div className="flex gap-3 justify-center mt-6">
+                    <Button 
                     size="lg" 
                     onClick={() => router.push('/test/module/1/intro?testId=1')} 
                     className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-10 py-6 text-lg shadow-lg"
@@ -92,6 +94,11 @@ export default function LandingPage() {
                     Take a Free Test Now
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
+                    <Button size="lg" variant="outline" onClick={() => router.push('/findatutor')} className="px-10 py-6">
+                      Find your SAT Tutor
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  </div>
                   <p className="text-sm text-muted-foreground mt-4">No account required to start • Sign up to save your progress</p>
                 </div>
 
@@ -203,14 +210,20 @@ export default function LandingPage() {
 
                 {/* Final CTA */}
                 <div className="text-center pt-8">
-                  <Button 
-                    size="lg" 
-                    onClick={() => router.push('/test/module/1/intro?testId=1')} 
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-12 py-6 text-lg shadow-lg"
-                  >
-                    Start Your Free Practice Test
-                    <ArrowRight className="ml-2 h-6 w-6" />
-                  </Button>
+                  <div className="flex justify-center gap-3">
+                    <Button 
+                      size="lg" 
+                      onClick={() => router.push('/test/module/1/intro?testId=1')} 
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-12 py-6 text-lg shadow-lg"
+                    >
+                      Start Your Free Practice Test
+                      <ArrowRight className="ml-2 h-6 w-6" />
+                    </Button>
+                    <Button size="lg" variant="outline" className="px-12 py-6" onClick={() => router.push('/findatutor')}>
+                      Find a Tutor
+                      <ArrowRight className="ml-2 h-6 w-6" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             </TabsContent>
@@ -252,7 +265,7 @@ export default function LandingPage() {
                   <div>
                     <h2 className="text-4xl font-bold mb-3 bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">Manage Classes & Track Success</h2>
                     <p className="text-muted-foreground text-lg">
-                      Whether you teach 1-on-1 or manage multiple classes, RealSAT gives you a complete 
+                      Whether you teach 1-on-1 or manage multiple classes, skoon. gives you a complete 
                       view of student performance and progress.
                     </p>
                   </div>
@@ -287,10 +300,16 @@ export default function LandingPage() {
                     </div>
                   </div>
 
-                  <Button size="lg" onClick={() => router.push('/teacher')} className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white w-full">
-                    Access Teacher Dashboard
+                  <div className="flex gap-3">
+                    <Button size="lg" onClick={() => router.push('/teacher')} className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white w-full">
+                      Access Teacher Dashboard
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
+                    <Button size="lg" variant="outline" onClick={() => router.push('/tutor')} className="w-full">
+                      Become a Tutor
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             </TabsContent>
@@ -347,10 +366,16 @@ export default function LandingPage() {
                         </div>
                       </div>
 
-                      <Button size="lg" onClick={() => router.push('/school')} className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white">
+                      <div className="flex gap-3">
+                        <Button size="lg" onClick={() => router.push('/school')} className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white">
                         Admin Dashboard
                         <ArrowRight className="ml-2 h-5 w-5" />
                       </Button>
+                        <Button size="lg" onClick={() => router.push('/admin')} variant="outline" className="w-full">
+                          Owner Dashboard
+                          <ArrowRight className="ml-2 h-5 w-5" />
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
 
@@ -396,6 +421,17 @@ export default function LandingPage() {
                       </div>
 
                       <Button size="lg" onClick={() => router.push('/admin')} variant="outline" className="w-full border-2 border-orange-500/50 hover:bg-orange-500/10">
+
+      {/* Top Performers */}
+      <section className="py-12 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-6 text-center">
+            <h2 className="text-3xl font-bold tracking-tight">Top Performers</h2>
+            <p className="text-muted-foreground">Top scores and most improved students and schools</p>
+          </div>
+          <TopPerformers />
+        </div>
+      </section>
                         Owner Dashboard
                         <ArrowRight className="ml-2 h-5 w-5" />
                       </Button>
@@ -416,10 +452,10 @@ export default function LandingPage() {
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
                 <BookOpen className="h-5 w-5 text-white" />
               </div>
-              <span className="font-bold text-xl">RealSAT</span>
+              <span className="font-bold text-xl">skoon.</span>
             </div>
             <p className="text-sm text-muted-foreground text-center">
-              © 2024 RealSAT • Complete Digital SAT Platform for Students, Teachers, and Schools
+              © 2024 skoon. • Complete Digital SAT Platform for Students, Teachers, and Schools
             </p>
           </div>
         </div>

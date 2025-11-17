@@ -3,7 +3,7 @@
  * Allows users to take tests without account creation
  */
 
-const TEMP_USER_KEY = 'realsat_temp_user_id';
+const TEMP_USER_KEY = 'skoon._temp_user_id';
 const TEMP_USER_PREFIX = '00000000-0000-4000-8000-';
 
 /**

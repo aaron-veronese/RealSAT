@@ -21,6 +21,42 @@ export interface TestModule {
   questions: TestQuestion[]
 }
 
+export type QuestionContentBlock =
+  | {
+      type: "text"
+      value: string
+    }
+  | {
+      type: "diagram"
+      diagramType:
+        | "geometry"
+        | "line"
+        | "bar"
+        | "scatter"
+        | "functionPlot"
+        | "image"
+
+      title?: string
+      note?: string
+
+      // Geometry diagrams
+      points?: Record<string, { x: number; y: number }>
+      edges?: { from: string; to: string; label?: string }[]
+      rightAngle?: string
+
+      // Chart / plot diagrams
+      categories?: string[]
+      series?: { name: string; values: number[] }[]
+      xLabel?: string
+      yLabel?: string
+      data?: { x: number; y: number }[]
+    }
+  | {
+      type: "table"
+      columns: string[]
+      rows: string[][]
+    }
+
 export interface TestQuestion {
   id: string
   moduleId: string
@@ -35,7 +71,7 @@ export interface TestQuestion {
   contentColumns?: string[] // Deprecated - use content array instead
   tags?: string[] // Array of tags
   timeSpent?: number // Time spent on this question in seconds
-  content?: Array<{ type: string; value: string }> // New structure
+  content?: QuestionContentBlock[]
   answers?: Array<{ type: string; value: string }> // New structure
   section?: 'MATH' | 'READING'
 }

@@ -26,7 +26,7 @@ type User = {
   name?: string
   username: string
   email: string
-  role: 'STUDENT' | 'TEACHER' | 'ADMIN' | 'OWNER'
+  role: 'STUDENT' | 'TEACHER' | 'ADMIN' | 'OWNER' | 'TUTOR'
 }
 
 export default function SchoolDashboardPage() {
@@ -90,6 +90,8 @@ export default function SchoolDashboardPage() {
         return 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
       case 'TEACHER':
         return 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
+      case 'TUTOR':
+        return 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
       case 'STUDENT':
         return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
       default:
@@ -128,7 +130,7 @@ export default function SchoolDashboardPage() {
           </div>
 
           {/* Summary Cards */}
-          <div className="grid gap-4 md:grid-cols-4 mb-6">
+          <div className="grid gap-4 md:grid-cols-5 mb-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Classrooms</CardTitle>
@@ -136,6 +138,18 @@ export default function SchoolDashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{classrooms.length}</div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Tutors</CardTitle>
+                <GraduationCap className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {users.filter(u => u.role === 'TUTOR').length}
+                </div>
               </CardContent>
             </Card>
 
@@ -262,6 +276,10 @@ export default function SchoolDashboardPage() {
                   <Button size="sm" variant="outline">
                     <Plus className="h-4 w-4 mr-2" />
                     Add Teacher
+                  </Button>
+                  <Button size="sm" variant="secondary">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Tutor
                   </Button>
                   <Button size="sm">
                     <Plus className="h-4 w-4 mr-2" />

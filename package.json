@@ -5,6 +5,8 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev",
+    "parse:pdf": "node ./scripts/parse_pdf.js",
+    "parse:pdf:advanced": "node ./scripts/parse_pdf_advanced.js",
     "lint": "eslint .",
     "start": "next start"
   },
@@ -59,6 +61,11 @@
     "react-katex": "^3.1.0",
     "react-resizable-panels": "^2.1.7",
     "recharts": "3.3.0",
+    "pdf-parse": "1.1.1",
+    "pdfjs-dist": "3.9.179",
+    "canvas": "^2.11.2",
+    "sharp": "^0.32.5",
+    "tesseract.js": "v2.1.5",
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",

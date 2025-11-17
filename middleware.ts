@@ -2,13 +2,14 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // Define user roles
-type UserRole = 'STUDENT' | 'TEACHER' | 'ADMIN' | 'OWNER';
+type UserRole = 'STUDENT' | 'TEACHER' | 'ADMIN' | 'OWNER' | 'TUTOR';
 
 // Role-based access control configuration
 const roleAccessMap: Record<string, UserRole[]> = {
   '/student': ['STUDENT'],
-  '/teacher': ['TEACHER', 'ADMIN', 'OWNER'],
-  '/school': ['ADMIN', 'OWNER'],
+  '/teacher': ['TEACHER', 'TUTOR', 'ADMIN', 'OWNER'],
+  '/school': ['ADMIN', 'OWNER', 'TUTOR'],
+  '/tutor': ['TUTOR', 'ADMIN', 'OWNER'],
   '/admin': ['OWNER'],
 };
 
@@ -56,6 +57,8 @@ export function middleware(request: NextRequest) {
             return NextResponse.redirect(new URL('/student', request.url));
           case 'TEACHER':
             return NextResponse.redirect(new URL('/teacher', request.url));
+          case 'TUTOR':
+            return NextResponse.redirect(new URL('/tutor', request.url));
           case 'ADMIN':
             return NextResponse.redirect(new URL('/school', request.url));
           case 'OWNER':

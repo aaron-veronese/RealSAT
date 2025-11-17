@@ -50,9 +50,12 @@ function answersMatch(userAnswer: string, correctAnswer: string, isFreeResponse:
 }
 
 export function calculateTestScore(modules: TestModule[]): TestScore {
-  // Calculate raw scores for each section by summing correct answers from respective modules
+  // Calculate per-module raw scores and per-module scaled scores
+  // We'll use the provided module-level conversion tables for each module
   let readingWritingRaw = 0
   let mathRaw = 0
+  let readingWritingScaled = 0
+  let mathScaled = 0
 
   for (const module of modules) {
     const correctCount = module.questions.filter((q) => {
@@ -62,14 +65,13 @@ export function calculateTestScore(modules: TestModule[]): TestScore {
 
     if (module.moduleType === "reading") {
       readingWritingRaw += correctCount
+      // Convert this module's raw to scaled using the per-module table
+      readingWritingScaled += getModuleScaledScore(module.moduleNumber, correctCount, 'reading')
     } else {
       mathRaw += correctCount
+      mathScaled += getModuleScaledScore(module.moduleNumber, correctCount, 'math')
     }
   }
-
-  // Convert raw scores to scaled scores using official Digital SAT conversion tables
-  const readingWritingScaled = convertRawToScaledScore(readingWritingRaw, "reading")
-  const mathScaled = convertRawToScaledScore(mathRaw, "math")
 
   const totalScore = roundToNearestTen(readingWritingScaled + mathScaled)
 
@@ -106,6 +108,54 @@ const mathConversionTable: Record<number, number> = {
   24: 600, 23: 590, 22: 580, 21: 570, 20: 560, 19: 550, 18: 540, 17: 530, 16: 520, 15: 510,
   14: 500, 13: 490, 12: 480, 11: 470, 10: 460, 9: 450, 8: 440, 7: 430, 6: 420, 5: 410,
   4: 400, 3: 390, 2: 380, 1: 370, 0: 200
+}
+
+// Module-level conversion tables (per-user-provided arrays):
+const readingAndWritingModule1Conversion: number[] = [
+  100,100,120,140,160,170,180,190,200,200,210,210,220,230,240,260,270,290,310,320,340,360,370,390,410,430,440,460
+]
+
+const readingAndWritingModule2Conversion: number[] = [
+  100,100,100,110,110,110,120,120,120,130,130,140,150,170,190,190,200,210,230,240,250,260,280,290,300,310,330,340
+]
+
+const mathModule1Conversion: number[] = [
+  100,100,120,140,160,160,180,180,200,200,210,240,260,280,300,320,340,360,390,410,430,450,470
+]
+
+const mathModule2Conversion: number[] = [
+  100,100,100,120,120,130,150,170,170,170,190,190,200,200,210,230,240,260,270,290,300,320,330
+]
+
+function clampToRange(raw: number, maxIndex: number): number {
+  if (typeof raw !== 'number' || isNaN(raw) || raw <= 0) return 0
+  const idx = Math.floor(raw)
+  if (idx < 0) return 0
+  if (idx > maxIndex) return maxIndex
+  return idx
+}
+
+function getModuleScaledScore(moduleNumber: number, rawScore: number, section: 'reading' | 'math'): number {
+  if (section === 'reading') {
+    if (moduleNumber === 1) {
+      const idx = clampToRange(rawScore, readingAndWritingModule1Conversion.length - 1)
+      return readingAndWritingModule1Conversion[idx] ?? readingAndWritingModule1Conversion[0]
+    } else if (moduleNumber === 2) {
+      const idx = clampToRange(rawScore, readingAndWritingModule2Conversion.length - 1)
+      return readingAndWritingModule2Conversion[idx] ?? readingAndWritingModule2Conversion[0]
+    }
+  } else if (section === 'math') {
+    if (moduleNumber === 1) {
+      const idx = clampToRange(rawScore, mathModule1Conversion.length - 1)
+      return mathModule1Conversion[idx] ?? mathModule1Conversion[0]
+    } else if (moduleNumber === 2) {
+      const idx = clampToRange(rawScore, mathModule2Conversion.length - 1)
+      return mathModule2Conversion[idx] ?? mathModule2Conversion[0]
+    }
+  }
+
+  // Fallback: if we don't know the module, try to map section-level raw.
+  return convertRawToScaledScore(rawScore, section)
 }
 
 function convertRawToScaledScore(rawScore: number, section: "reading" | "math"): number {

@@ -23,6 +23,7 @@ import {
 } from "recharts"
 import { calculateTestScore } from "@/lib/scoring"
 import { RenderedContent } from "@/components/rendered-content"
+import QuestionContentRenderer from "@/components/questions/QuestionContentRenderer"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { SignupModal } from "@/components/signup-modal"
 import { isCurrentUserTemp, getCurrentUserId } from "@/lib/auth"
@@ -2009,12 +2010,16 @@ export default function TestResultsPage() {
                               {/* Show full question content for all users, but blurred for temp users */}
                               <div className="space-y-4">
                                 <div className="text-base mb-4">
-                                  {hasContentColumns ? (
+                                  {question.content && question.content.length > 0 ? (
+                                    <div data-content-index="main">
+                                      <QuestionContentRenderer content={question.content} testNumber={1} enableFormatting={enableFormatting} />
+                                    </div>
+                                  ) : hasContentColumns ? (
                                     contentColumns.map((content, idx) =>
                                       content ? (
                                         <div key={`${questionKey}-content-${idx}`} data-content-index={idx}>
                                           <RenderedContent
-                                            content={String(content)}
+                                            content={content ?? ""}
                                             testNumber={1}
                                             basePartIndex={idx * 100}
                                             enableFormatting={enableFormatting}
@@ -2057,7 +2062,7 @@ export default function TestResultsPage() {
                                               isUserChoice && !isCorrectChoice ? 'text-orange-700 dark:text-orange-300' : 'text-gray-700 dark:text-gray-300'
                                             }>
                                               <RenderedContent
-                                                content={String(option)}
+                                                content={option}
                                                 testNumber={1}
                                                 enableFormatting={enableFormatting}
                                               />

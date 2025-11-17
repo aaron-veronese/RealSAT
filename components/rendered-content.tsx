@@ -2,10 +2,12 @@
 
 import Image from "next/image"
 import { parseContent } from "@/lib/content-renderer"
+import React from "react"
 import { InlineMath, BlockMath } from "react-katex"
+import SATChart from "./SATChart"
 
 interface RenderedContentProps {
-  content: string
+  content: any
   testNumber?: number
   highlights?: {partIndex: number, lineIndex: number, start: number, end: number, text: string}[]
   basePartIndex?: number
@@ -19,7 +21,34 @@ export function RenderedContent({
   basePartIndex = 0,
   enableFormatting = false 
 }: RenderedContentProps) {
-  const parts = parseContent(content)
+  // Support either string content or structured objects (e.g., chart configs)
+  // If content is a JSON string representing an object, parse it
+  if (typeof content === "string" && content.trim().startsWith("{")) {
+    try {
+      const parsed = JSON.parse(content)
+      content = parsed
+    } catch {
+      // ignore parse errors and treat as plain text
+    }
+  }
+
+  if (typeof content === "object" && content !== null) {
+    // If this looks like a chart object, render chart directly
+    const chartObj = (content && (content.chartType || content?.type === "chart")) ? (content.chartType ? content : content.value ?? content) : null
+    if (chartObj) {
+      return <SATChart chart={chartObj} />
+    }
+
+    // If it's a React element, render it directly
+    if (React.isValidElement(content)) {
+      return <>{content}</>
+    }
+
+    // Fallback: stringify objects so the parser can render text
+    content = String(content)
+  }
+
+  const parts = parseContent(String(content))
 
   return (
     <>
@@ -110,6 +139,8 @@ export function RenderedContent({
             </div>
           )
         }
+
+        // chart content is handled earlier when we receive an object
 
         return null
       })}

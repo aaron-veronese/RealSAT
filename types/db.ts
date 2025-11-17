@@ -62,7 +62,7 @@ export interface DBUser {
   email: string;
   username: string;
   name?: string; // New field for full name
-  role: 'STUDENT' | 'TEACHER' | 'ADMIN' | 'OWNER';
+  role: 'STUDENT' | 'TEACHER' | 'ADMIN' | 'OWNER' | 'TUTOR';
   school_id: string | null;
   gems_balance: number | null;
   video_requests?: number[]; // New field for requested question IDs
@@ -73,10 +73,22 @@ export interface DBSchool {
   id: string;
   name: string;
   branding?: {
+    skoonURL?: string;
+    website?: string;
+    hourlyRate?: number;
+    bio?: string;
+    specialty?: 'MATH' | 'READING' | 'ALL';
+    portrait?: string;
     logo?: string;
-    plan?: string;
-    url?: string;
-    theme?: Record<string, any>;
+    readingColor?: string;
+    mathColor?: string;
+    tertiaryColor?: string;
+    darkModeHighlight?: string;
+    darkModeBackground?: string;
+    darkModeText?: string;
+    lightModeHighlight?: string;
+    lightModeBackground?: string;
+    lightModeText?: string;
     [key: string]: any;
   };
   created_at: string;

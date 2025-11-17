@@ -93,7 +93,7 @@ export function SignupModal({
           username,
           name: fullName,
           role: 'STUDENT',
-          school_id: null, // Will be set to default RealSAT school ID in the future
+          school_id: null, // Will be set to default skoon. school ID in the future
           gems_balance: 50, // Starting balance
           video_requests: [],
         })

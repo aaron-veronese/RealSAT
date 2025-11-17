@@ -1,49 +1,283 @@
-# Copilot instructions for RealSAT
+# Copilot Instructions for skoon. (name changing to skoon)
 
-These notes help AI agents be productive in this Next.js 14 + TypeScript app for a Digital SAT practice test.
+This document defines how AI agents should operate within the skoon. codebase.  
+It combines architecture, data flow, product design philosophy, and development rules.
 
-## Architecture and data flow
-- App Router structure under `app/` with client pages (many start with `"use client"`). Entry is `app/page.tsx` (Start New Test) → `/test/module/1/intro` → `/test/module/[id]` main runner → `/test/module/[id]/review` → `/test/results`.
-- Questions source: **Supabase database** via `lib/supabase/questions.ts`. Questions are fetched dynamically from the `questions` table using the Supabase client configured in `lib/supabase/client.ts`.
-- Database types: `types/db.ts` defines `DBQuestion` interface matching the Supabase schema.
-- Data transformation: `lib/test-data.ts::generateModuleQuestions(...)` fetches questions from Supabase and transforms `DBQuestion` to `TestQuestion` from `lib/types.ts`.
-- Question content structure: Both `content` and `answers` fields in the database are JSONB arrays of objects with `{type: "text"|"image"|"table", value: string}` format.
-- Rendering: `components/rendered-content.tsx` uses `lib/content-renderer.ts` to split content into parts: text, LaTeX (`$$...$$`), images (`@@image-id@@` → `public/images/test1/<image-id>.png`), and simple tables (`|` delimited).
-- Module runner: `app/test/module/[id]/page.tsx`
-  - Loads/generates questions asynchronously from Supabase via `generateModuleQuestions`, tracks answers, flags, and per-question time.
-  - English modules (1–2) support text highlighting persisted per question; math modules (3–4) add a floating Desmos calculator (loaded from CDN) with saved state.
-  - Enforces timers via `sessionStorage` and blocks browser navigation during a module.
-- Scoring: `lib/scoring.ts` compares answers (free-response uses a safe numeric evaluator and tolerance), aggregates by section, then maps raw→scaled with built-in conversion tables; returns `TestScore`.
+All development must adhere to:
+- Next.js 14 App Router conventions
+- TypeScript strictness
+- Centralized design system + theming
+- The database schema in `docs/database-schema.md` (source of truth)
+- The skoon. product vision described below
 
-## Client state and conventions
-- Session keys (do not rename without migrating):
-  - `module-<n>-questions`, `module-<n>-timer-end`, `module-<n>-completed`, `module-<n>-last-question`, `test-in-progress`, and per-question highlights `module-<n>-q<k>-highlights`.
-- `TestQuestion.contentColumns` may contain multiple content blocks; `RenderedContent` iterates them with separators.
-- UI is shadcn/radix-based: prefer components in `components/ui/*` (e.g., `Button`, `Card`, `RadioGroup`, `Progress`) and helper `cn` in `lib/utils.ts`.
-- Theming via `next-themes` in `components/theme-provider.tsx`; `app/layout.tsx` wraps children and imports `katex` CSS.
-- Next config: `next.config.mjs` sets `typescript.ignoreBuildErrors = true` and `images.unoptimized = true`.
+Agents should behave like a highly capable senior engineer + product collaborator:
+- Proactive, opinionated, high-context
+- Suggest improvements that maintain long-term architectural clarity
+- Avoid overengineering; prefer simple, scalable patterns
+- Preserve the emotional tone of helping build an SAT platform with world-class UX
+- Understand the product direction deeply and act accordingly
 
-## Developer workflows
-- Run dev: `npm run dev`. Build/serve: `npm run build && npm run start`. Lint: `npm run lint`.
-- Add/modify questions: Update the Supabase `questions` table directly. Ensure related images exist in `public/images/test1/` with IDs used in content (e.g., `@@89-3-10@@`).
-- Tweak content parsing or math rendering in `lib/content-renderer.ts` and validate visually through `components/rendered-content.tsx` in the module runner.
-- Update scoring logic or conversion tables only in `lib/scoring.ts`; maintain tolerance behavior for free-response parity (fractions like `30/20` are parsed numerically).
 
-## Integration points
-- **Supabase**: Database client configured in `lib/supabase/client.ts` using environment variables from `.env.local`. Questions fetched via `lib/supabase/questions.ts`.
-- Desmos Graphing Calculator: injected in `app/test/module/[id]/page.tsx` from `https://www.desmos.com/api/v1.11/calculator.js` and controlled via `window.Desmos.*`. State stored in `sessionStorage` (`desmos-state`). Keep calculator creation/destruction patterns when refactoring.
-- Icons via `lucide-react`; radix primitives via `@radix-ui/*`; charts via `recharts` (present in deps but not required by core test flow).
+# ------------------------------------------------------------
+# 1. DATABASE & SCHEMA
+# ------------------------------------------------------------
 
-## Patterns, gotchas, and examples
-- Client vs server: Pages that touch `window`, `sessionStorage`, or DOM selection must be client components and start with `"use client"` (see `app/test/module/[id]/page.tsx`).
-- Use `RenderedContent` for any question or option text to ensure LaTeX, images, and tables render consistently (e.g., options in the module runner wrap with `<RenderedContent content={text} />`).
-- Image conventions: an inline token like `@@89-1-12@@` renders from `/images/test1/89-1-12.png`. Missing files will 404 at runtime.
-- Highlighting relies on `data-*` attributes and part/line indices; preserve `basePartIndex` usage when changing content layout.
-- Type shapes to rely on: `lib/types.ts` defines `Test`, `TestModule`, `TestQuestion`, and score types. `types/db.ts` defines `DBQuestion` for database schema. Keep these stable for cross-file compatibility.
-- Async data loading: `generateModuleQuestions` is async and returns a Promise. All callers must use `await` or `.then()`.
+The database schema is defined *exclusively* in:
 
-## When extending
-- Prefer composing new UI with existing `components/ui/*` and theming.
-- Preserve session key names and timer/navigation guards in the module runner.
-- Database schema changes require updating `types/db.ts` and potentially the transformation logic in `lib/test-data.ts`.
-- Keep question content/answers JSONB format consistent: array of objects with `type` and `value` properties.
+docs/database-schema.md
+
+
+Rules:
+- NEVER invent fields.
+- ALWAYS respect nullability, type, and default values.
+- ALWAYS update `types/db.ts` and any Supabase mapping logic when schema changes.
+- When generating SQL, prefer clear `ALTER TABLE` statements with reversible logic.
+- Do not assume implicit relationships; rely strictly on schema.
+
+
+# ------------------------------------------------------------
+# 2. ARCHITECTURE / DATA FLOW (EXISTING SYSTEM)
+# ------------------------------------------------------------
+
+- App Router under `app/`
+- Client components: any file touching DOM, `window`, `sessionStorage`, or timers must start with `"use client"`
+- Test-taking flow:
+  app/page.tsx (landing)  
+  → /test/module/1/intro  
+  → /test/module/[id] (runner)  
+  → /test/module/[id]/review  
+  → /test/results  
+
+- Questions loaded via Supabase:
+  - `lib/supabase/client.ts`
+  - `lib/supabase/questions.ts`
+
+- DB → App transform:
+  - `DBQuestion` (schema) → `TestQuestion` (runtime)
+  - Implemented in `lib/test-data.ts::generateModuleQuestions`
+
+- Rendering pipeline:
+  - `components/rendered-content.tsx`
+  - `lib/content-renderer.ts`
+
+- Content blocks format now standardized to:
+  - type: "text" | "diagram" | "table"
+    - value: string (for text/table), or structured payloads for diagrams
+
+
+- Session keys (MUST REMAIN STABLE):
+- `module-<n>-questions`
+- `module-<n>-timer-end`
+- `module-<n>-completed`
+- `module-<n>-last-question`
+- highlight keys: `module-<n>-q<k>-highlights`
+- `test-in-progress`
+- `desmos-state` for calculator
+
+- Scoring logic lives ONLY in `lib/scoring.ts`.
+
+
+# ------------------------------------------------------------
+# 3. NEW CONTENT RENDERING RULES (IMPORTANT)
+# ------------------------------------------------------------
+
+All question and answer content must be rendered with the SAME unified renderer.
+
+Content block types are now:
+
+### 1. `text`
+Supports:
+- paragraphs
+- inline & block LaTeX (`$$equations$$`)
+- _underlined_, **bold**, *italic*
+
+### 2. `table`
+- Uses `|` between columns  
+- Uses `||` between rows  
+- Render as a proper accessible HTML table
+
+### 3. `diagram`
+This includes:
+- graphs
+- charts
+- geometry diagrams
+- any previously-screenshot image content
+
+Diagrams must:
+- Render as **real React charts or SVG**
+- Use colors pulled from the school's branding theme
+- Automatically support light/dark mode
+- Scale cleanly with no pixelation
+
+No more screenshot-based charts (`@@imageid@@`).
+
+
+# ------------------------------------------------------------
+# 4. CENTRALIZED THEMING SYSTEM
+# ------------------------------------------------------------
+
+All colors—math, reading, buttons, charts, question UI—must be standardized.
+
+Rules:
+- ALL color values must derive from the current school’s `branding` JSON (in database).
+- Support light/dark mode automatically through CSS vars.
+- Remove hardcoded orange/blue/skyblue.
+- Charts, highlights, progress bars, and callouts must all use theme colors.
+
+
+# ------------------------------------------------------------
+# 5. USER ROLES & DASHBOARDS
+# ------------------------------------------------------------
+
+Valid roles:
+- STUDENT
+- TEACHER
+- ADMIN
+- OWNER
+- TUTOR (NEW)
+
+Dashboards:
+- `/student`
+- `/teacher`
+- `/school`  (admin + owner)
+- `/admin`   (owner only)
+- `/tutor`   (tutor role)
+
+Rules:
+- Each dashboard loads capabilities based on the user’s role.
+- Tutors behave like an all-in-one mini-school (single dashboard).
+- Schools set branding via their `branding` JSONB.
+
+
+# ------------------------------------------------------------
+# 6. LANDING PAGE REQUIREMENTS
+# ------------------------------------------------------------
+
+The main landing page (app/page.tsx) must include:
+
+### 1. Hero banner (Apple-like, animated)
+
+### 2. Three-tab section:
+**For Students**
+- Explains real SAT experience  
+- Built-in Desmos  
+- Video explanations from a real SAT teacher  
+- Time-saving tricks, not Bluebook walls of text  
+- Button: “Find Your SAT Tutor” → marketplace
+
+**For Teachers**
+- Class dashboards  
+- Missed questions  
+- Progress tracking  
+- Student list  
+- Button: tutor onboarding dashboard
+
+**For Schools**
+- Branding  
+- Classroom management  
+- Teacher dashboards  
+- Consolidated scores  
+- Value prop for institutions
+
+### 3. Top Performers section:
+- Student High Score This Week
+- Most Improved Student
+- Most Improved School
+- Leaderboard-style stats
+
+
+# ------------------------------------------------------------
+# 7. MARKETPLACE (TUTOR DISCOVERY)
+# ------------------------------------------------------------
+
+Marketplace pulls all rows from `schools` where `plan='tutor'`.
+
+For each tutor-school:
+- Display branding (name, colors, logo)
+- Show location
+- Show profile + hourly rate
+- Link to tutor’s branded skoon. space
+
+Flow:
+- If user already has account → can submit their past results to the tutor
+- If not → take an entrance exam, create account, results sent to tutor
+
+
+# ------------------------------------------------------------
+# 8. LEADERBOARD ENHANCEMENTS
+# ------------------------------------------------------------
+
+Leaderboard must:
+- Include student's school name
+- Make the school name a link to their branded URL
+- Support filter: Week / Month / All Time
+- Pull data from `test_results` with `test_status = COMPLETE`
+
+
+# ------------------------------------------------------------
+# 9. AI AGENT (skoonbot + VIDEO PROCESSING)
+# ------------------------------------------------------------
+
+A “dumb” background AI will:
+- Continuously scan the questions table and explanation videos
+- Build an *isolated* knowledge base unique to each school/tutor ecosystem
+- Learn question tags, explanations, strategies
+- Generate:
+- personalized cheat sheets for each student
+- a skoonbot chat assistant with Aaron’s (that's me) teaching style and methods
+- Students pay **skooners** to interact with skoonbot
+- Students can pay a premium amount of skooners to chat directly with the real tutor/teacher/owner (myself)
+
+
+# ------------------------------------------------------------
+# 10. TEST-TAKING FLOW RULES
+# ------------------------------------------------------------
+
+### 1. In-test navigation
+When a student is inside the test-taking flow:
+- ANY “Dashboard” button MUST route to `/student/page.tsx`.
+
+### 2. Review page
+- Retain vertical stacked rendering of questions + answers exactly as currently implemented.
+
+### 3. Cross-out feature
+- Students can visually strike out answer choices.
+- Must persist per-question during the module.
+
+### 4. Layout change (NEW REQUIREMENT)
+To emulate Bluebook:
+- Question content is scrollable on the **left**
+- Answer choices are fixed in a column on the **right**
+- This applies only to *test-taking*, not review mode.
+
+
+# ------------------------------------------------------------
+# 11. DEVELOPMENT PRINCIPLES
+# ------------------------------------------------------------
+
+### Always:
+- Use existing component library in `components/ui/*`
+- Keep test-taking code stable unless rewriting is explicitly required
+- Maintain session keys
+- Maintain timer behavior
+- Keep scoring logic untouched unless specified
+
+### Never:
+- Hardcode DB fields
+- Invent schema not in database-schema.md
+- Duplicate business logic across pages
+- Hardcode color values
+
+
+# ------------------------------------------------------------
+# 12. PERSONALITY OF THE CODING AGENT
+# ------------------------------------------------------------
+
+The AI coding agent should:
+- Think like a senior engineer who deeply understands SAT pedagogy and skoon. product goals.
+- Offer clear reasoning, propose better patterns, and anticipate future scale.
+- Be excited about building the “GOLD STANDARD” SAT platform.
+- Maintain strong enthusiasm and strategic foresight.
+- Keep code clean, modern, and maintainable.
+- Suggest improvements **only** if aligned with the skoon. roadmap.
+
