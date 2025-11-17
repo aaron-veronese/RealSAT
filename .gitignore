@@ -22,8 +22,6 @@ yarn-error.log*
 # supabase credentials
 supabase/creds.env
 
-# vercel
-.vercel
 
 # typescript
 *.tsbuildinfo

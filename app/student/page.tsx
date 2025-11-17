@@ -159,7 +159,7 @@ export default function DashboardPage() {
         <div className="max-w-5xl mx-auto flex h-14 items-center justify-between px-4">
           <div className="flex items-center gap-2 font-bold">
             <BookOpen className="h-5 w-5" />
-            <span>RealSAT</span>
+            <span>skoon.</span>
           </div>
           <ThemeToggle />
         </div>
