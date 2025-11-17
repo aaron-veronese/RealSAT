@@ -11,11 +11,11 @@ const DEFAULT_BRANDING = {
   readingColor: '#1E90FF',
   mathColor: '#FF7A18',
   tertiaryColor: '#0EA5E9',
-  lightModeHighlight: '#1E3A8A',
+  lightModeHighlight: '#0EA5E9',
   lightModeBackground: '#FFFFFF',
   lightModeText: '#0F172A',
   darkModeHighlight: '#F59E0B',
-  darkModeBackground: '#0F172A',
+  darkModeBackground: '#1d0b30ff',
   darkModeText: '#E5E7EB',
 }
 

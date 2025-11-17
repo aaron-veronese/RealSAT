@@ -140,6 +140,22 @@ body {
   color: rgb(15 23 42); /* dark text on yellow background in dark mode */
 }
 
+/* Centralized highlight style (uses branding CSS variables). */
+mark.highlight-mark {
+  background-color: var(--color-light-highlight, #fffb91);
+  /* In light mode, highlighted text should match the light-mode background color */
+  color: var(--color-light-bg, inherit);
+  padding: 0;
+  border-radius: 0.12rem;
+}
+
+.dark mark.highlight-mark {
+  background-color: var(--color-dark-highlight, #F59E0B);
+  /* In dark mode, highlighted text should match the dark-mode background color */
+  color: var(--color-dark-bg, inherit);
+  padding: 0;
+}
+
 /* Dark mode text fixes for question numbers */
 .dark .text-gray-900 {
   color: rgb(255 255 255 / 0.9); /* white text in dark mode */

@@ -16,7 +16,6 @@ export function MathModuleRunner({ moduleId, testId }: { moduleId: number; testI
   const base = useTestModuleBase(moduleId, testId, initialQuestion)
 
   const {
-    questions,
     currentQuestion,
     totalQuestions,
     percentComplete,
@@ -37,6 +36,7 @@ export function MathModuleRunner({ moduleId, testId }: { moduleId: number; testI
   const [showCalculator, setShowCalculator] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const calcRef = useRef<any>(null)
+  const rectKey = `module-${moduleId}-desmos-rect`
 
   const [rect, setRect] = useState({ top: 120, left: 120, width: 900, height: 600 })
   const dragState = useRef({ dragging: false, offsetX: 0, offsetY: 0 })
@@ -87,9 +87,11 @@ export function MathModuleRunner({ moduleId, testId }: { moduleId: number; testI
     })
     
     ensure().then(() => {
-      if (showCalculator && containerRef.current && window.Desmos) {
+      if (showCalculator && window.Desmos) {
+        const mountNode = containerRef.current
+        if (!mountNode) return
         const isDark = document.documentElement.classList.contains("dark")
-        calcRef.current = window.Desmos.GraphingCalculator(containerRef.current, {
+        calcRef.current = window.Desmos.GraphingCalculator(mountNode, {
           keypad: true,
           expressions: true,
           settingsMenu: true,
@@ -114,7 +116,83 @@ export function MathModuleRunner({ moduleId, testId }: { moduleId: number; testI
         calcRef.current = null
       }
     }
-  }, [showCalculator, isMathModule])
+    }, [showCalculator, isMathModule])
+
+  // Initialize rect from sessionStorage or compute default to fill left half between header/footer
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const saved = sessionStorage.getItem(rectKey)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        // If saved rect exists but equals the placeholder defaults, treat as not-saved
+        const isPlaceholder = parsed && parsed.top === 120 && parsed.left === 120 && parsed.width === 900 && parsed.height === 600
+        if (parsed && typeof parsed === 'object' && !isPlaceholder) {
+          setRect(parsed)
+          return
+        }
+      }
+    } catch {}
+
+    // compute default rect to fill left half of the viewport between header and footer
+    const computeDefault = () => {
+      const vw = window.innerWidth
+      const vh = window.innerHeight
+      const left = 0
+      const width = Math.floor(vw / 2)
+      const headerEl = document.querySelector('header.sticky') || document.querySelector('header')
+      const footerEl = document.querySelector('footer.fixed') || document.querySelector('footer')
+      const headerRect = headerEl ? (headerEl as HTMLElement).getBoundingClientRect() : { bottom: 0, height: 0 }
+      const footerRect = footerEl ? (footerEl as HTMLElement).getBoundingClientRect() : { top: vh, height: 0 }
+      const top = Math.round(headerRect.bottom)
+      const footerTop = Math.round(footerRect.top)
+      const height = Math.max(200, footerTop - top)
+      return { top, left, width, height, headerMeasured: headerRect.height > 0, footerMeasured: footerRect.height > 0 }
+    }
+
+    const applyDefaultIfPlaceholder = () => {
+      setRect(r => {
+        if (r.top === 120 && r.left === 120 && r.width === 900 && r.height === 600) {
+          const d: any = computeDefault()
+          // if header/footer measurement missing, try again on next frame
+          if (!d.headerMeasured || !d.footerMeasured) {
+            requestAnimationFrame(() => {
+              const d2: any = computeDefault()
+              setRect({ top: d2.top, left: d2.left, width: d2.width, height: d2.height })
+            })
+            return r
+          }
+          return { top: d.top, left: d.left, width: d.width, height: d.height }
+        }
+        return r
+      })
+    }
+
+    applyDefaultIfPlaceholder()
+  // run once on mount
+  }, [])
+
+  // persist rect changes to sessionStorage so position/size survive open/close
+  useEffect(() => {
+    try { sessionStorage.setItem(rectKey, JSON.stringify(rect)) } catch {}
+  }, [rect])
+
+  // Helper: compute default rect on demand (used when user opens calculator)
+  const computeDefaultRect = (): { top: number; left: number; width: number; height: number; headerMeasured?: boolean; footerMeasured?: boolean } => {
+    if (typeof window === 'undefined') return { top: 120, left: 120, width: 900, height: 600, headerMeasured: false, footerMeasured: false }
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    const left = 0
+    const width = Math.floor(vw / 2)
+    const headerEl = document.querySelector('header.sticky') || document.querySelector('header')
+    const footerEl = document.querySelector('footer.fixed') || document.querySelector('footer')
+    const headerRect = headerEl ? (headerEl as HTMLElement).getBoundingClientRect() : { bottom: 0, height: 0 }
+    const footerRect = footerEl ? (footerEl as HTMLElement).getBoundingClientRect() : { top: vh, height: 0 }
+    const top = Math.round(headerRect.bottom)
+    const footerTop = Math.round(footerRect.top)
+    const height = Math.max(200, footerTop - top)
+    return { top, left, width, height, headerMeasured: headerRect.height > 0, footerMeasured: footerRect.height > 0 }
+  }
 
   useEffect(() => {
     const obs = new MutationObserver(() => {
@@ -130,13 +208,41 @@ export function MathModuleRunner({ moduleId, testId }: { moduleId: number; testI
   }, [])
 
   const toggleCalculator = () => {
+    // Toggle; when opening, ensure default rect is computed/applied if no saved rect exists
     setShowCalculator(s => {
       const next = !s
-      if (!next && calcRef.current) {
+      if (next) {
+        // opening: if there is no saved rect and rect is still placeholder, compute and apply default
         try {
-          const state = calcRef.current.getState?.()
-          if (state) sessionStorage.setItem("desmos-state", JSON.stringify(state))
+          const saved = sessionStorage.getItem(rectKey)
+          let useDefault = false
+          if (!saved) useDefault = true
+          else {
+            const parsed = JSON.parse(saved)
+            const isPlaceholder = parsed && parsed.top === 120 && parsed.left === 120 && parsed.width === 900 && parsed.height === 600
+            if (isPlaceholder) useDefault = true
+          }
+          if (useDefault && rect.top === 120 && rect.left === 120 && rect.width === 900 && rect.height === 600) {
+            const d: any = computeDefaultRect()
+            if (d.headerMeasured && d.footerMeasured) {
+              setRect({ top: d.top, left: d.left, width: d.width, height: d.height })
+            } else {
+              // measurements not ready yet; apply after next frame
+              requestAnimationFrame(() => {
+                const d2: any = computeDefaultRect()
+                setRect({ top: d2.top, left: d2.left, width: d2.width, height: d2.height })
+              })
+            }
+          }
         } catch {}
+      } else {
+        // closing: persist desmos state as before
+        if (calcRef.current) {
+          try {
+            const state = calcRef.current.getState?.()
+            if (state) sessionStorage.setItem("desmos-state", JSON.stringify(state))
+          } catch {}
+        }
       }
       return next
     })
@@ -237,6 +343,7 @@ export function MathModuleRunner({ moduleId, testId }: { moduleId: number; testI
       showCalculator={showCalculator}
       toggleCalculator={toggleCalculator}
       calculatorOverlay={calculatorOverlay}
+      
     />
   )
 }

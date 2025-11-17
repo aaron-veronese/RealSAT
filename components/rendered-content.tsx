@@ -9,8 +9,9 @@ import SATChart from "./SATChart"
 interface RenderedContentProps {
   content: any
   testNumber?: number
-  highlights?: {partIndex: number, lineIndex: number, start: number, end: number, text: string}[]
-  basePartIndex?: number
+  // highlights are global character offsets relative to the start of the whole content container
+  highlights?: { start: number; end: number; text: string }[]
+  baseCharIndex?: number
   enableFormatting?: boolean
 }
 
@@ -18,7 +19,7 @@ export function RenderedContent({
   content, 
   testNumber = 1, 
   highlights = [], 
-  basePartIndex = 0,
+  baseCharIndex = 0,
   enableFormatting = false 
 }: RenderedContentProps) {
   // Support either string content or structured objects (e.g., chart configs)
@@ -55,14 +56,17 @@ export function RenderedContent({
       {parts.map((part, index) => {
         if (part.type === "text") {
           // Only split on explicit \n markers for line breaks (not all newlines)
-          const lines = part.content.split('\\n')
-          
+          const lines = part.content.split('\n')
+
+          // Compute running offset within this block's parts to translate global highlights
+          // We'll calculate the character offset for each line relative to the overall content by
+          // adding baseCharIndex + cumulative chars from earlier parts in this block.
           return (
             <span key={index} className="text-base leading-relaxed whitespace-pre-wrap" data-part-index={index}>
               {lines.map((line, lineIdx) => {
                 // Apply text formatting if enabled
                 let processedLine: (string | JSX.Element)[] = [line]
-                
+
                 if (enableFormatting) {
                   processedLine = applyTextFormatting(line)
                 }
@@ -70,7 +74,7 @@ export function RenderedContent({
                 return (
                   <span key={lineIdx} data-line-index={lineIdx}>
                     {highlights.length > 0 
-                      ? applyHighlights(processedLine, highlights, basePartIndex + index, lineIdx)
+                      ? applyHighlightsGlobal(processedLine, highlights, baseCharIndex, parts, index, lineIdx)
                       : processedLine}
                     {lineIdx < lines.length - 1 && <br />}
                   </span>
@@ -246,39 +250,64 @@ function processInnerFormatting(text: string, startKey: number): (string | JSX.E
 }
 
 // Highlight helpers
-function applyHighlights(
-  content: (string | JSX.Element)[], 
-  highlights: {partIndex: number, lineIndex: number, start: number, end: number, text: string}[], 
-  partIndex: number, 
+// Apply highlights that are expressed in global character offsets.
+function applyHighlightsGlobal(
+  content: (string | JSX.Element)[],
+  highlights: { start: number; end: number; text: string }[],
+  baseCharIndex: number,
+  parts: any[],
+  partIndex: number,
   lineIndex: number
 ): (string | JSX.Element)[] {
-  const relevant = highlights.filter(h => h.partIndex === partIndex && h.lineIndex === lineIndex)
+  // Compute the character offset at the start of this part (sum lengths of earlier parts)
+  let partOffset = 0
+  for (let i = 0; i < partIndex; i++) {
+    const p = parts[i]
+    if (p.type === 'text') {
+      partOffset += String(p.content).length
+    }
+  }
+
+  // Compute offset of this line within the part
+  const lines = String(parts[partIndex].content).split('\n')
+  let lineOffset = 0
+  for (let i = 0; i < lineIndex; i++) {
+    lineOffset += lines[i].length
+    // account for the explicit newline between lines
+    lineOffset += 1
+  }
+
+  const lineText = content.map(c => typeof c === 'string' ? c : c.props?.children || '').join('')
+  const lineStartGlobal = baseCharIndex + partOffset + lineOffset
+  const lineEndGlobal = lineStartGlobal + lineText.length
+
+  // Find highlights that overlap this line
+  const relevant = highlights.filter(h => h.end > lineStartGlobal && h.start < lineEndGlobal)
     .sort((a, b) => a.start - b.start)
-  
+
   if (relevant.length === 0) return content
 
-  // Flatten content to string for highlighting
-  const text = content.map(c => typeof c === 'string' ? c : c.props?.children || '').join('')
-  
-  const parts: (string | JSX.Element)[] = []
-  let lastEnd = 0
+  const partsOut: (string | JSX.Element)[] = []
+  let lastPos = lineStartGlobal
   let key = 1000
 
   for (const h of relevant) {
-    if (h.start > lastEnd) {
-      parts.push(text.slice(lastEnd, h.start))
+    const segStart = Math.max(h.start, lineStartGlobal)
+    const segEnd = Math.min(h.end, lineEndGlobal)
+    if (segStart > lastPos) {
+      partsOut.push(lineText.slice(lastPos - lineStartGlobal, segStart - lineStartGlobal))
     }
-    parts.push(
-      <mark key={key++} className="bg-sky-500/30 dark:bg-orange-400/30">
-        {text.slice(h.start, h.end)}
+    partsOut.push(
+      <mark key={key++} className="highlight-mark">
+        {lineText.slice(segStart - lineStartGlobal, segEnd - lineStartGlobal)}
       </mark>
     )
-    lastEnd = h.end
-  }
-  
-  if (lastEnd < text.length) {
-    parts.push(text.slice(lastEnd))
+    lastPos = segEnd
   }
 
-  return parts
+  if (lastPos < lineEndGlobal) {
+    partsOut.push(lineText.slice(lastPos - lineStartGlobal))
+  }
+
+  return partsOut
 }

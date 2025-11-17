@@ -2021,7 +2021,7 @@ export default function TestResultsPage() {
                                           <RenderedContent
                                             content={content ?? ""}
                                             testNumber={1}
-                                            basePartIndex={idx * 100}
+                                            baseCharIndex={idx * 100}
                                             enableFormatting={enableFormatting}
                                           />
                                           {idx < contentColumns.length - 1 && <hr className="my-4" />}
@@ -2033,7 +2033,7 @@ export default function TestResultsPage() {
                                       <RenderedContent
                                         content={String(question.questionText || '')}
                                         testNumber={1}
-                                        basePartIndex={1000}
+                                        baseCharIndex={1000}
                                         enableFormatting={enableFormatting}
                                       />
                                     </div>

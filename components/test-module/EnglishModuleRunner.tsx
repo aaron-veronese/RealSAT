@@ -32,7 +32,7 @@ export function EnglishModuleRunner({ moduleId, testId }: { moduleId: number; te
   const contentRef = useRef<HTMLDivElement | null>(null)
 
   const [highlights, setHighlights] = useState<
-    { partIndex: number; lineIndex: number; start: number; end: number; text: string }[]
+    { start: number; end: number; text: string }[]
   >([])
   const [isFillFocused, setIsFillFocused] = useState(false)
   const [crossouts, setCrossouts] = useState<string[]>([])
@@ -42,7 +42,20 @@ export function EnglishModuleRunner({ moduleId, testId }: { moduleId: number; te
     const key = `module-${moduleId}-q${currentQuestion}-highlights`
     try {
       const saved = sessionStorage.getItem(key)
-      setHighlights(saved ? JSON.parse(saved) : [])
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved)
+          // Support legacy shape by ignoring unknown entries
+          const normalized = Array.isArray(parsed)
+            ? parsed.filter((h: any) => typeof h.start === 'number' && typeof h.end === 'number')
+            : []
+          setHighlights(normalized)
+        } catch {
+          setHighlights([])
+        }
+      } else {
+        setHighlights([])
+      }
     } catch {
       setHighlights([])
     }
@@ -86,78 +99,72 @@ export function EnglishModuleRunner({ moduleId, testId }: { moduleId: number; te
     const range = sel.getRangeAt(0)
     if (!root.contains(range.commonAncestorContainer)) return
 
-    const container = range.startContainer
-    if (container.nodeType !== Node.TEXT_NODE) return
-
-    const lineSpan = (container as any).parentElement
-    if (!lineSpan || !lineSpan.hasAttribute("data-line-index")) return
-
-    const partSpan = lineSpan.parentElement
-    if (!partSpan || !partSpan.hasAttribute("data-part-index")) return
-
-    const contentDiv = partSpan.closest("[data-content-index]")
-    if (!contentDiv) return
-
-    const contentIndex = contentDiv.getAttribute("data-content-index")
-    const localPartIndex = parseInt(partSpan.getAttribute("data-part-index")!)
-    
-    let globalPartIndex = localPartIndex
-    if (contentIndex === "main") {
-      globalPartIndex = 1000 + localPartIndex
-    } else {
-      globalPartIndex = parseInt(contentIndex!) * 100 + localPartIndex
+    // Find first text node in the whole root to compute global offsets
+    function findFirstTextNode(el: Node): Text | null {
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null)
+      return walker.nextNode() as Text | null
     }
 
-    const lineIndex = parseInt(lineSpan.getAttribute("data-line-index")!)
+    const firstText = findFirstTextNode(root)
+    if (!firstText) return
 
-    // Get all text nodes in the line
-    const textNodes: Text[] = []
-    let child = lineSpan.firstChild
-    while (child) {
-      if (child.nodeType === Node.TEXT_NODE) {
-        textNodes.push(child as Text)
-      } else if (child.nodeName === 'MARK') {
-        // Include text inside mark elements
-        let markChild = child.firstChild
-        while (markChild) {
-          if (markChild.nodeType === Node.TEXT_NODE) {
-            textNodes.push(markChild as Text)
-          }
-          markChild = markChild.nextSibling
-        }
-      }
-      child = child.nextSibling
-    }
+    // Create ranges from start of root to selection boundaries to compute global character offsets
+    const preRange = document.createRange()
+    preRange.setStart(firstText, 0)
+    preRange.setEnd(range.startContainer, range.startOffset)
+    const start = preRange.toString().length
 
-    let start = 0
-    let found = false
-    for (const node of textNodes) {
-      if (node === container) {
-        start += range.startOffset
-        found = true
-        break
-      } else {
-        start += node.textContent!.length
-      }
-    }
-    
-    if (!found) return
+    const preRangeEnd = document.createRange()
+    preRangeEnd.setStart(firstText, 0)
+    preRangeEnd.setEnd(range.endContainer, range.endOffset)
+    const end = preRangeEnd.toString().length
 
-    const end = start + (range.endOffset - range.startOffset)
     const text = sel.toString().trim()
-    
     if (text.length < 2) return
-    
     const clipped = text.length > 140 ? text.slice(0, 140) : text
 
-    // Add to existing highlights instead of replacing
+    // Prevent duplicate highlights (same exact global range) and avoid nested/overlapping duplicates
     setHighlights(prev => {
-      const next = [...prev, { partIndex: globalPartIndex, lineIndex, start, end, text: clipped }]
-      persistHighlights(next)
-      return next
-    })
+      // If exact match exists, noop
+      if (prev.some(h => h.start === start && h.end === end)) {
+        try { sel.removeAllRanges() } catch {}
+        return prev
+      }
 
-    try { sel.removeAllRanges() } catch {}
+      // If this selection is already fully contained within an existing highlight, noop
+      if (prev.some(h => h.start <= start && h.end >= end)) {
+        try { sel.removeAllRanges() } catch {}
+        return prev
+      }
+
+      // Append and then merge overlapping highlights into disjoint intervals
+      const combined = [...prev, { start, end, text: clipped }]
+      const merged = mergeHighlights(combined)
+      persistHighlights(merged)
+      try { sel.removeAllRanges() } catch {}
+      return merged
+    })
+  }
+
+  // Merge overlapping or adjacent highlight intervals. Keeps the text from the earliest interval in a merged group.
+  function mergeHighlights(hls: { start: number; end: number; text: string }[]) {
+    if (!Array.isArray(hls) || hls.length === 0) return []
+    const arr = [...hls].sort((a, b) => a.start - b.start)
+    const out: { start: number; end: number; text: string }[] = []
+    let cur = { ...arr[0] }
+    for (let i = 1; i < arr.length; i++) {
+      const it = arr[i]
+      if (it.start <= cur.end) {
+        // overlapping or contiguous -> extend
+        cur.end = Math.max(cur.end, it.end)
+        // keep the text from the earliest interval (cur.text)
+      } else {
+        out.push(cur)
+        cur = { ...it }
+      }
+    }
+    out.push(cur)
+    return out
   }
 
   const clearHighlights = () => {

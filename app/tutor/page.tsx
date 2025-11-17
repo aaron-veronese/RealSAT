@@ -138,15 +138,27 @@ export default function TutorDashboardPage() {
               <div className="grid gap-3 md:grid-cols-3">
                 <div>
                   <label className="block text-sm font-medium">Reading Color</label>
-                  <input type="color" value={branding.readingColor || '#1E90FF'} onChange={(e) => saveBranding({ ...branding, readingColor: e.target.value })} />
+                  <input
+                    type="color"
+                    value={branding.readingColor ?? (typeof window !== 'undefined' ? (getComputedStyle(document.documentElement).getPropertyValue('--color-reading').trim() || '#1E90FF') : '#1E90FF')}
+                    onChange={(e) => saveBranding({ ...branding, readingColor: e.target.value })}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium">Math Color</label>
-                  <input type="color" value={branding.mathColor || '#FF7A18'} onChange={(e) => saveBranding({ ...branding, mathColor: e.target.value })} />
+                  <input
+                    type="color"
+                    value={branding.mathColor ?? (typeof window !== 'undefined' ? (getComputedStyle(document.documentElement).getPropertyValue('--color-math').trim() || '#FF7A18') : '#FF7A18')}
+                    onChange={(e) => saveBranding({ ...branding, mathColor: e.target.value })}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium">Tertiary Color</label>
-                  <input type="color" value={branding.tertiaryColor || '#0EA5E9'} onChange={(e) => saveBranding({ ...branding, tertiaryColor: e.target.value })} />
+                  <input
+                    type="color"
+                    value={branding.tertiaryColor ?? (typeof window !== 'undefined' ? (getComputedStyle(document.documentElement).getPropertyValue('--color-tertiary').trim() || '#0EA5E9') : '#0EA5E9')}
+                    onChange={(e) => saveBranding({ ...branding, tertiaryColor: e.target.value })}
+                  />
                 </div>
               </div>
             </CardContent>

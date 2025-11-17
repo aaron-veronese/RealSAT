@@ -10,25 +10,34 @@ import TableRenderer from "./TableRenderer"
 interface Props {
   content: QuestionContentBlock[] | undefined
   testNumber?: number
-  highlights?: { partIndex: number; lineIndex: number; start: number; end: number; text: string }[]
-  basePartIndex?: number
+  // highlights are global character offsets relative to the start of the whole content container
+  highlights?: { start: number; end: number; text: string }[]
+  baseCharIndex?: number
   enableFormatting?: boolean
 }
 
-export default function QuestionContentRenderer({ content, testNumber = 1, highlights = [], basePartIndex = 0, enableFormatting = false }: Props) {
+export default function QuestionContentRenderer({ content, testNumber = 1, highlights = [], baseCharIndex = 0, enableFormatting = false }: Props) {
   if (!content || content.length === 0) return null
+
+  // We compute a running character offset for each block so RenderedContent can map global ranges
+  let cumulative = 0
 
   return (
     <div className="space-y-4">
       {content.map((block, idx) => {
         const key = `qc-${idx}`
+        const partBase = baseCharIndex + cumulative
 
         if (block.type === "text") {
-          return (
-            <div key={key} data-content-index={idx} data-part-index={basePartIndex + idx * 100}>
-              <RenderedContent content={String(block.value)} testNumber={testNumber} highlights={highlights} basePartIndex={basePartIndex + idx * 100} enableFormatting={enableFormatting} />
+          const blockText = String(block.value)
+          const len = blockText.length
+          const node = (
+            <div key={key} data-content-index={idx} data-part-index={partBase}>
+              <RenderedContent content={blockText} testNumber={testNumber} highlights={highlights} baseCharIndex={partBase} enableFormatting={enableFormatting} />
             </div>
           )
+          cumulative += len
+          return node
         }
 
         if (block.type === "diagram") {

@@ -250,11 +250,11 @@ export default function AdminDashboardPage() {
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <Label className="text-sm text-muted-foreground">Primary Color</Label>
-                            <Input type="color" defaultValue="#3b82f6" />
+                            <Input type="color" defaultValue={typeof window !== 'undefined' ? (getComputedStyle(document.documentElement).getPropertyValue('--color-reading').trim() || '#3b82f6') : '#3b82f6'} />
                           </div>
                           <div>
                             <Label className="text-sm text-muted-foreground">Secondary Color</Label>
-                            <Input type="color" defaultValue="#8b5cf6" />
+                            <Input type="color" defaultValue={typeof window !== 'undefined' ? (getComputedStyle(document.documentElement).getPropertyValue('--color-math').trim() || '#8b5cf6') : '#8b5cf6'} />
                           </div>
                         </div>
                       </div>
