@@ -29,7 +29,9 @@ export default function QuestionContentRenderer({ content, testNumber = 1, highl
         const partBase = baseCharIndex + cumulative
 
         if (block.type === "text") {
-          const blockText = String(block.value)
+          // Normalize CRLF -> LF so lengths used for base offsets match renderer normalization
+          const raw = String(block.value)
+          const blockText = raw.replace(/\r\n/g, "\n")
           const len = blockText.length
           const node = (
             <div key={key} data-content-index={idx} data-part-index={partBase}>
