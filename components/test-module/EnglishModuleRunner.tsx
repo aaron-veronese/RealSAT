@@ -112,12 +112,15 @@ export function EnglishModuleRunner({ moduleId, testId }: { moduleId: number; te
     const preRange = document.createRange()
     preRange.setStart(firstText, 0)
     preRange.setEnd(range.startContainer, range.startOffset)
-    const start = preRange.toString().length
+    // Normalize CRLF returned by range.toString() to LF so it matches our renderer normalization
+    const preStartText = preRange.toString().replace(/\r\n/g, "\n")
+    const start = preStartText.length
 
     const preRangeEnd = document.createRange()
     preRangeEnd.setStart(firstText, 0)
     preRangeEnd.setEnd(range.endContainer, range.endOffset)
-    const end = preRangeEnd.toString().length
+    const preEndText = preRangeEnd.toString().replace(/\r\n/g, "\n")
+    const end = preEndText.length
 
     const text = sel.toString().trim()
     if (text.length < 2) return
