@@ -32,7 +32,12 @@ export default function QuestionContentRenderer({ content, testNumber = 1, highl
           // Normalize CRLF -> LF so lengths used for base offsets match renderer normalization
           const raw = String(block.value)
           const blockText = raw.replace(/\r\n/g, "\n")
-          const len = blockText.length
+          // Estimate the displayed text length by removing formatting markup so base indices match DOM text nodes
+          const displayText = blockText
+            .replace(/\*\*([^*]+)\*\*/g, "$1") // bold
+            .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, "$1") // italic
+            .replace(/_([^_]+)_/g, "$1") // underline
+          const len = displayText.length
           const node = (
             <div key={key} data-content-index={idx} data-part-index={partBase}>
               <RenderedContent content={blockText} testNumber={testNumber} highlights={highlights} baseCharIndex={partBase} enableFormatting={enableFormatting} />
