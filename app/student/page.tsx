@@ -115,13 +115,14 @@ export default function DashboardPage() {
     }
     
     if (status === 'complete') {
-      return (
-        <Badge 
+          return (
+          <Badge 
           variant="secondary" 
           className={isReadingModule 
-            ? "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300" 
-            : "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300"
+            ? "text-[var(--color-primary)] dark:text-[var(--color-dark-text)]" 
+            : "text-[var(--color-secondary)] dark:text-[var(--color-dark-text)]"
           }
+          style={isReadingModule ? { backgroundColor: 'var(--color-light-highlight)' } : { backgroundColor: 'var(--color-secondary-muted)' }}
         >
           Complete
         </Badge>
@@ -132,10 +133,8 @@ export default function DashboardPage() {
       <Button
         size="sm"
         onClick={() => router.push(`/test/module/${moduleNum}/intro?testId=${test.test_id}`)}
-        className={isReadingModule 
-          ? "bg-blue-600 hover:bg-blue-700 text-white" 
-          : "bg-orange-500 hover:bg-orange-600 text-white"
-        }
+        className={isReadingModule ? "hover:brightness-90 text-white" : "hover:brightness-90 text-white"}
+        style={isReadingModule ? { backgroundColor: 'var(--color-primary)' } : { backgroundColor: 'var(--color-secondary)' }}
       >
         Start Module {moduleNum}
       </Button>

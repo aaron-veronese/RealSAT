@@ -85,17 +85,17 @@ export default function SchoolDashboardPage() {
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case 'OWNER':
-        return 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300'
+        return { className: 'text-purple-700 dark:text-purple-300', style: { backgroundColor: 'rgb(245 158 11 / 0.08)' } }
       case 'ADMIN':
-        return 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+        return { className: 'text-[var(--color-primary)] dark:text-[var(--color-dark-text)]', style: { backgroundColor: 'var(--color-light-highlight)' } }
       case 'TEACHER':
-        return 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
+        return { className: 'text-green-700 dark:text-green-300', style: { backgroundColor: 'rgb(220 252 231 / 0.8)' } }
       case 'TUTOR':
-        return 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
+        return { className: 'text-indigo-700 dark:text-indigo-300', style: { backgroundColor: 'rgb(236 239 255 / 1)' } }
       case 'STUDENT':
-        return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+        return { className: 'text-gray-700 dark:text-gray-300', style: { backgroundColor: 'rgb(243 244 246 / 1)' } }
       default:
-        return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+        return { className: 'text-gray-700 dark:text-gray-300', style: { backgroundColor: 'rgb(243 244 246 / 1)' } }
     }
   }
 
@@ -310,9 +310,11 @@ export default function SchoolDashboardPage() {
                             <TableCell>{user.username}</TableCell>
                             <TableCell>{user.email}</TableCell>
                             <TableCell>
-                              <Badge className={getRoleBadgeColor(user.role)}>
-                                {user.role}
-                              </Badge>
+                              {(() => { const r = getRoleBadgeColor(user.role); return (
+                                <Badge className={r.className} style={r.style}>
+                                  {user.role}
+                                </Badge>
+                              ) })()}
                             </TableCell>
                             <TableCell className="text-center">
                               <Button variant="outline" size="sm">Edit</Button>

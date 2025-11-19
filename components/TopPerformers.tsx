@@ -204,7 +204,7 @@ export function TopPerformers() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-sky-500" />
+            <Users className="h-4 w-4 text-[var(--color-tertiary)]" />
             <CardTitle className="text-sm">Most Improved School (3 months)</CardTitle>
           </div>
         </CardHeader>

@@ -97,11 +97,11 @@ body {
 
 /* Dark mode highlight fixes */
 .dark .bg-blue-50 {
-  background-color: rgb(59 130 246 / 0.15); /* darker blue background in dark mode */
+  background-color: var(--color-primary-muted); /* muted reading background in dark mode */
 }
 
 .dark .bg-orange-50 {
-  background-color: rgb(249 115 22 / 0.15); /* darker orange background in dark mode */
+  background-color: var(--color-secondary-muted); /* muted math background in dark mode */
 }
 
 .dark .bg-yellow-50 {
@@ -109,21 +109,15 @@ body {
 }
 
 .dark .bg-sky-50 {
-  background-color: rgb(14 165 233 / 0.15); /* darker sky blue background in dark mode */
+  background-color: var(--color-tertiary-muted); /* muted tertiary background in dark mode */
 }
 
 /* Dark mode review button styling */
 .dark .bg-sky-500 {
-  background-color: rgb(14 165 233); /* solid sky blue in dark mode */
+  background-color: var(--color-tertiary); /* solid tertiary in dark mode */
 }
-
 .dark .bg-sky-600 {
-  background-color: rgb(2 132 199); /* darker sky blue hover in dark mode */
-}
-
-.dark .bg-sky-500,
-.dark .bg-sky-600 {
-  color: rgb(15 23 42); /* dark text on sky blue background in dark mode */
+  background-color: var(--color-tertiary); /* darker tertiary hover in dark mode */
 }
 
 /* Dark mode flagged button styling */

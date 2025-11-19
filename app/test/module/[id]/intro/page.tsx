@@ -308,12 +308,13 @@ export default function ModuleIntroPage() {
             </ul>
           </div>
         </CardContent>
-        <CardFooter className="flex justify-between">
+          <CardFooter className="flex justify-between">
           <Button
             size="lg"
             onClick={handleReturnToDashboard}
             variant="outline"
-            className="gap-2 bg-orange-400 hover:bg-orange-500 text-white border-orange-400 hover:border-orange-500"
+            className="gap-2"
+            style={{ backgroundColor: 'var(--color-secondary)', borderColor: 'var(--color-secondary)', color: 'white' }}
           >
             <Home className="h-4 w-4" />
             Return to Dashboard
@@ -325,7 +326,8 @@ export default function ModuleIntroPage() {
               size="lg"
               onClick={handleViewRWResults}
               variant="outline"
-              className="gap-2 bg-sky-500 hover:bg-sky-600 text-white border-sky-500 hover:border-sky-600"
+              className="gap-2 text-white border-[var(--color-tertiary)] hover:brightness-90"
+              style={{ backgroundColor: 'var(--color-tertiary)' }}
             >
               Reading & Writing Results
             </Button>
@@ -335,7 +337,8 @@ export default function ModuleIntroPage() {
             size="lg"
             onClick={handleBeginModule}
             disabled={isStarting}
-            className="gap-2 bg-blue-600 hover:bg-blue-700"
+            className="gap-2"
+            style={{ backgroundColor: 'var(--color-primary)', borderColor: 'var(--color-primary)', color: 'white' }}
           >
             {isStarting ? "Starting..." : "Begin Module"}
             {!isStarting && <ArrowRight className="h-4 w-4" />}

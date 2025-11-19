@@ -1390,7 +1390,8 @@ export default function TestResultsPage() {
                       </div>
                       <Button
                         onClick={() => setShowSignupModal(true)}
-                        className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                        className="bg-gradient-to-r to-purple-600 hover:brightness-90 text-white"
+                        style={{ backgroundImage: 'linear-gradient(90deg, var(--color-primary), var(--color-secondary))' }}
                       >
                         Sign Up Free
                       </Button>
@@ -1473,7 +1474,7 @@ export default function TestResultsPage() {
                               <span className="font-bold">{Math.round(animatedModuleScores[0])}/27</span>
                             </div>
                             <div className="flex h-2 overflow-hidden rounded-full">
-                              <div className="bg-blue-500" style={{ width: `${(animatedProgressBars[0] / 27) * 100}%` }} />
+                              <div style={{ width: `${(animatedProgressBars[0] / 27) * 100}%`, backgroundColor: 'var(--color-primary)' }} />
                               <div className="flex-1 bg-gray-200" />
                             </div>
                           </div>
@@ -1483,7 +1484,7 @@ export default function TestResultsPage() {
                               <span className="font-bold">{Math.round(animatedModuleScores[1])}/27</span>
                             </div>
                             <div className="flex h-2 overflow-hidden rounded-full">
-                              <div className="bg-blue-500" style={{ width: `${(animatedProgressBars[1] / 27) * 100}%` }} />
+                              <div style={{ width: `${(animatedProgressBars[1] / 27) * 100}%`, backgroundColor: 'var(--color-primary)' }} />
                               <div className="flex-1 bg-gray-200" />
                             </div>
                           </div>
@@ -1508,7 +1509,7 @@ export default function TestResultsPage() {
                               <span className="font-bold">{Math.round(animatedModuleScores[2])}/22</span>
                             </div>
                             <div className="flex h-2 overflow-hidden rounded-full">
-                              <div className="bg-orange-400" style={{ width: `${(animatedProgressBars[2] / 22) * 100}%` }} />
+                              <div style={{ width: `${(animatedProgressBars[2] / 22) * 100}%`, backgroundColor: 'var(--color-secondary)' }} />
                               <div className="flex-1 bg-gray-200" />
                             </div>
                           </div>
@@ -1518,7 +1519,7 @@ export default function TestResultsPage() {
                               <span className="font-bold">{Math.round(animatedModuleScores[3])}/22</span>
                             </div>
                             <div className="flex h-2 overflow-hidden rounded-full">
-                              <div className="bg-orange-400" style={{ width: `${(animatedProgressBars[3] / 22) * 100}%` }} />
+                              <div style={{ width: `${(animatedProgressBars[3] / 22) * 100}%`, backgroundColor: 'var(--color-secondary)' }} />
                               <div className="flex-1 bg-gray-200" />
                             </div>
                           </div>
@@ -1865,7 +1866,8 @@ export default function TestResultsPage() {
                     variant={selectedFilters.includes('correct') ? "default" : "outline"}
                     size="sm"
                     onClick={() => toggleFilter('correct')}
-                    className={selectedFilters.includes('correct') ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" : ""}
+                    className={selectedFilters.includes('correct') ? "text-[var(--color-primary)] dark:text-[var(--color-dark-text)]" : ""}
+                    style={selectedFilters.includes('correct') ? { backgroundColor: 'var(--color-light-highlight)' } : undefined}
                   >
                     Correct
                   </Button>
@@ -1875,7 +1877,8 @@ export default function TestResultsPage() {
                     variant={selectedFilters.includes('incorrect') ? "default" : "outline"}
                     size="sm"
                     onClick={() => toggleFilter('incorrect')}
-                    className={selectedFilters.includes('incorrect') ? "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" : ""}
+                    className={selectedFilters.includes('incorrect') ? "text-[var(--color-secondary)] dark:text-[var(--color-dark-text)]" : ""}
+                    style={selectedFilters.includes('incorrect') ? { backgroundColor: 'var(--color-secondary-muted)' } : undefined}
                   >
                     Incorrect
                   </Button>
@@ -1952,10 +1955,15 @@ export default function TestResultsPage() {
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                  question.isUnanswered ? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200' :
-                                  question.isCorrect ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
-                                }`}>
+                                <span
+                                  className={`px-2 py-1 rounded text-xs font-medium ${
+                                    question.isUnanswered ? 'text-gray-800 dark:text-gray-200' :
+                                    question.isCorrect ? 'text-[var(--color-primary)] dark:text-[var(--color-dark-text)]' : 'text-[var(--color-secondary)] dark:text-[var(--color-dark-text)]'
+                                  }`}
+                                  style={
+                                    question.isUnanswered ? undefined : question.isCorrect ? { backgroundColor: 'var(--color-light-highlight)' } : { backgroundColor: 'var(--color-secondary-muted)' }
+                                  }
+                                >
                                   {question.isUnanswered ? 'Unanswered' :
                                    question.isCorrect ? 'Correct' : 'Incorrect'}
                                 </span>
@@ -2000,7 +2008,8 @@ export default function TestResultsPage() {
                                     </div>
                                     <Button
                                       onClick={() => setShowSignupModal(true)}
-                                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                                      className="bg-gradient-to-r to-purple-600 hover:brightness-90 text-white"
+                                      style={{ backgroundImage: 'linear-gradient(90deg, var(--color-primary), var(--color-secondary))' }}
                                     >
                                       Sign Up Free
                                     </Button>
@@ -2051,15 +2060,17 @@ export default function TestResultsPage() {
                                         <div
                                           key={`${questionKey}-option-${optIndex}`}
                                           className={`p-3 rounded border ${
-                                            isCorrectChoice ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950' :
-                                            isUserChoice && !isCorrectChoice ? 'border-orange-500 bg-orange-50 dark:border-orange-400 dark:bg-orange-950' : 'border-gray-200 dark:border-gray-600'
+                                            isCorrectChoice ? 'border-[var(--color-primary)] dark:border-[var(--color-dark-highlight)]' :
+                                            isUserChoice && !isCorrectChoice ? 'border-[var(--color-secondary)] dark:border-[var(--color-dark-highlight)]' : 'border-gray-200 dark:border-gray-600'
                                           }`}
+                                          style={isCorrectChoice ? { backgroundColor: 'var(--color-light-highlight)' } : isUserChoice && !isCorrectChoice ? { backgroundColor: 'var(--color-secondary-muted)' } : undefined}
+                                        >
                                         >
                                           <span className="font-medium">
                                             {optionLetter}.{'  '}
                                             <span className={
-                                              isCorrectChoice ? 'text-blue-700 dark:text-blue-300' :
-                                              isUserChoice && !isCorrectChoice ? 'text-orange-700 dark:text-orange-300' : 'text-gray-700 dark:text-gray-300'
+                                              isCorrectChoice ? 'text-[var(--color-primary)] dark:text-[var(--color-dark-text)]' :
+                                              isUserChoice && !isCorrectChoice ? 'text-[var(--color-secondary)] dark:text-[var(--color-dark-text)]' : 'text-gray-700 dark:text-gray-300'
                                             }>
                                               <RenderedContent
                                                 content={option}
@@ -2068,9 +2079,9 @@ export default function TestResultsPage() {
                                               />
                                             </span>
                                           </span>
-                                          {isCorrectChoice && isUserChoice && <span className="ml-2 text-blue-600 dark:text-blue-400 text-sm">(Your Choice - Correct)</span>}
-                                          {isCorrectChoice && !isUserChoice && <span className="ml-2 text-blue-600 dark:text-blue-400 text-sm">(Correct)</span>}
-                                          {isUserChoice && !isCorrectChoice && <span className="ml-2 text-orange-600 dark:text-orange-400 text-sm">(Your Choice - Incorrect)</span>}
+                                          {isCorrectChoice && isUserChoice && <span className="ml-2 text-[var(--color-primary)] dark:text-[var(--color-dark-text)] text-sm">(Your Choice - Correct)</span>}
+                                          {isCorrectChoice && !isUserChoice && <span className="ml-2 text-[var(--color-primary)] dark:text-[var(--color-dark-text)] text-sm">(Correct)</span>}
+                                          {isUserChoice && !isCorrectChoice && <span className="ml-2 text-[var(--color-secondary)] dark:text-[var(--color-dark-text)] text-sm">(Your Choice - Incorrect)</span>}
                                         </div>
                                       )
                                     })}
@@ -2080,19 +2091,19 @@ export default function TestResultsPage() {
                                 {question.questionType === 'free-response' && (
                                   <div className="space-y-2">
                                     <div className={`p-3 rounded border ${
-                                      question.isCorrect ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950' : 'border-orange-500 bg-orange-50 dark:border-orange-400 dark:bg-orange-950'
-                                    }`}>
+                                      question.isCorrect ? 'border-[var(--color-primary)] dark:border-[var(--color-dark-highlight)]' : 'border-[var(--color-secondary)] dark:border-[var(--color-dark-highlight)]'
+                                    }`} style={question.isCorrect ? { backgroundColor: 'var(--color-light-highlight)' } : { backgroundColor: 'var(--color-secondary-muted)' }}>
                                       <div className="font-medium mb-2">Your Answer:</div>
                                       <div className={
-                                        question.isCorrect ? 'text-blue-700 dark:text-blue-300' : 'text-orange-700 dark:text-orange-300'
+                                        question.isCorrect ? 'text-[var(--color-primary)] dark:text-[var(--color-dark-text)]' : 'text-[var(--color-secondary)] dark:text-[var(--color-dark-text)]'
                                       }>
                                         {question.userAnswer || 'No answer provided'}
                                       </div>
-                                      {question.isCorrect && <span className="ml-2 text-blue-600 dark:text-blue-400 text-sm">(Correct)</span>}
+                                      {question.isCorrect && <span className="ml-2 text-[var(--color-primary)] dark:text-[var(--color-dark-text)] text-sm">(Correct)</span>}
                                     </div>
-                                    <div className="p-3 rounded border border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950">
+                                    <div className="p-3 rounded border border-[var(--color-primary)] dark:border-[var(--color-dark-highlight)]" style={{ backgroundColor: 'var(--color-light-highlight)' }}>
                                       <div className="font-medium mb-2">Correct Answer:</div>
-                                      <div className="text-blue-700 dark:text-blue-300">
+                                      <div className="text-[var(--color-primary)] dark:text-[var(--color-dark-text)]">
                                         {question.correctAnswer}
                                       </div>
                                     </div>
@@ -2149,14 +2160,14 @@ export default function TestResultsPage() {
                                             <>
                                               Unlock Video Explanation
                                               <span className="flex items-center gap-0.5">
-                                                10<Gem className="h-3.5 w-3.5 fill-orange-500 text-orange-500" />
+                                                10<Gem className="h-3.5 w-3.5 fill-[var(--color-secondary)] text-[var(--color-secondary)]" />
                                               </span>
                                             </>
                                           ) : (
                                             <>
                                               Request Video Explanation
                                               <span className="flex items-center gap-0.5">
-                                                10<Gem className="h-3.5 w-3.5 fill-orange-500 text-orange-500" />
+                                                10<Gem className="h-3.5 w-3.5 fill-[var(--color-secondary)] text-[var(--color-secondary)]" />
                                               </span>
                                             </>
                                           )}

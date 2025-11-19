@@ -80,8 +80,8 @@ export interface DBSchool {
     specialty?: 'MATH' | 'READING' | 'ALL';
     portrait?: string;
     logo?: string;
-    readingColor?: string;
-    mathColor?: string;
+    primaryColor?: string;
+    secondaryColor?: string;
     tertiaryColor?: string;
     darkModeHighlight?: string;
     darkModeBackground?: string;

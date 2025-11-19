@@ -56,7 +56,8 @@ export function RenderedContent({
       {parts.map((part, index) => {
         if (part.type === "text") {
           // Only split on explicit \n markers for line breaks (not all newlines)
-          const lines = part.content.split('\n')
+          const normalizedPartContent = String(part.content).replace(/\r\n/g, '\n')
+          const lines = normalizedPartContent.split('\n')
 
           // Compute running offset within this block's parts to translate global highlights
           // We'll calculate the character offset for each line relative to the overall content by
@@ -264,12 +265,15 @@ function applyHighlightsGlobal(
   for (let i = 0; i < partIndex; i++) {
     const p = parts[i]
     if (p.type === 'text') {
-      partOffset += String(p.content).length
+      // normalize CRLF -> LF so lengths match browser selection normalization
+      const pContent = String(p.content).replace(/\r\n/g, '\n')
+      partOffset += pContent.length
     }
   }
 
-  // Compute offset of this line within the part
-  const lines = String(parts[partIndex].content).split('\n')
+  // Compute offset of this line within the part, using normalized content
+  const partContent = String(parts[partIndex].content).replace(/\r\n/g, '\n')
+  const lines = partContent.split('\n')
   let lineOffset = 0
   for (let i = 0; i < lineIndex; i++) {
     lineOffset += lines[i].length

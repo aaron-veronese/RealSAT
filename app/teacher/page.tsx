@@ -178,10 +178,10 @@ export default function TeacherDashboardPage() {
   }
 
   const getScoreBadgeColor = (score: number) => {
-    if (score >= 1400) return 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
-    if (score >= 1200) return 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
-    if (score >= 1000) return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300'
-    return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+    if (score >= 1400) return { className: 'text-green-700 dark:text-green-300', style: { backgroundColor: 'rgb(220 252 231 / 0.8)' } }
+    if (score >= 1200) return { className: 'text-[var(--color-primary)] dark:text-[var(--color-dark-text)]', style: { backgroundColor: 'var(--color-light-highlight)' } }
+    if (score >= 1000) return { className: 'text-yellow-700 dark:text-yellow-300', style: { backgroundColor: 'rgb(254 240 138 / 0.8)' } }
+    return { className: 'text-gray-700 dark:text-gray-300', style: { backgroundColor: 'rgb(243 244 246 / 1)' } }
   }
 
   if (isLoading) {
@@ -306,9 +306,11 @@ export default function TeacherDashboardPage() {
                         <TableCell className="font-medium">{student.name}</TableCell>
                         <TableCell className="text-center">{student.test_count}</TableCell>
                         <TableCell className="text-center">
-                          <Badge className={getScoreBadgeColor(student.total_score)}>
-                            {student.total_score}
-                          </Badge>
+                          {(() => { const s = getScoreBadgeColor(student.total_score); return (
+                            <Badge className={s.className} style={s.style}>
+                              {student.total_score}
+                            </Badge>
+                          ) })()}
                         </TableCell>
                         <TableCell className="text-center">{student.reading_score || '—'}</TableCell>
                         <TableCell className="text-center">{student.math_score || '—'}</TableCell>

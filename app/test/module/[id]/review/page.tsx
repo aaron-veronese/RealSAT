@@ -411,7 +411,7 @@ export default function ModuleReviewPage() {
           {timeLeft !== null && (
             <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 text-muted-foreground">
               <Clock className="h-4 w-4" />
-              <span className={`${timeLeft < 300 ? "text-orange-400 font-medium" : ""}`}>{formatTime(timeLeft)}</span>
+              <span className={`${timeLeft < 300 ? "text-[var(--color-secondary)] font-medium" : ""}`}>{formatTime(timeLeft)}</span>
             </div>
           )}
           <div className="ml-auto flex items-center gap-4">
@@ -431,7 +431,7 @@ export default function ModuleReviewPage() {
                   <div className="flex flex-col gap-2">
                     <span className="text-sm text-muted-foreground">Questions Answered</span>
                     <div className="flex items-center gap-2">
-                      <Progress value={(answeredCount / totalQuestions) * 100} className="h-2 [&>div]:bg-blue-500" />
+                      <Progress value={(answeredCount / totalQuestions) * 100} className="h-2" fillColor={'var(--color-primary)'} />
                       <span className="text-sm font-medium">
                         {answeredCount}/{totalQuestions}
                       </span>
@@ -440,7 +440,7 @@ export default function ModuleReviewPage() {
                   <div className="flex flex-col gap-2">
                     <span className="text-sm text-muted-foreground">Questions Flagged</span>
                     <div className="flex items-center gap-2">
-                      <Progress value={(flaggedCount / totalQuestions) * 100} className="h-2 [&>div]:bg-yellow-500" />
+                      <Progress value={(flaggedCount / totalQuestions) * 100} className="h-2" fillColor={'var(--color-secondary)'} />
                       <span className="text-sm font-medium">
                         {flaggedCount}/{totalQuestions}
                       </span>
@@ -451,7 +451,8 @@ export default function ModuleReviewPage() {
                     <div className="flex items-center gap-2">
                       <Progress
                         value={((totalQuestions - answeredCount) / totalQuestions) * 100}
-                        className="h-2 [&>div]:bg-orange-400"
+                        className="h-2"
+                        fillColor={'var(--color-secondary)'}
                       />
                       <span className="text-sm font-medium">
                         {totalQuestions - answeredCount}/{totalQuestions}
@@ -476,20 +477,21 @@ export default function ModuleReviewPage() {
                         size="sm"
                         className={`relative h-10 text-gray-900 ${
                           isFlagged
-                            ? "border-yellow-500 bg-yellow-50"
-                            : isAnswered
-                              ? "border-blue-500 bg-blue-50"
-                              : "border-orange-400 bg-orange-50"
+                                ? "border-yellow-500 bg-yellow-50"
+                                : isAnswered
+                                  ? "border-[var(--color-primary)]"
+                                  : "border-[var(--color-secondary)]"
                         }`}
+                        style={isAnswered ? { backgroundColor: 'var(--color-light-highlight)' } : undefined}
                         onClick={() => handleGoToQuestion(questionNumber)}
                       >
                         <span>{questionNumber}</span>
-                        {isFlagged ? (
+                          {isFlagged ? (
                           <Flag className="absolute -bottom-2 -right-2 h-4 w-4 text-yellow-500 bg-background rounded-full" />
                         ) : isAnswered ? (
-                          <CheckCircle className="absolute -bottom-2 -right-2 h-4 w-4 text-blue-500 bg-background rounded-full" />
+                          <CheckCircle className="absolute -bottom-2 -right-2 h-4 w-4 text-[var(--color-primary)] bg-background rounded-full" />
                         ) : (
-                          <AlertCircle className="absolute -bottom-2 -right-2 h-4 w-4 text-orange-400 bg-background rounded-full" />
+                          <AlertCircle className="absolute -bottom-2 -right-2 h-4 w-4 text-[var(--color-secondary)] bg-background rounded-full" />
                         )}
                       </Button>
                     )
@@ -505,7 +507,8 @@ export default function ModuleReviewPage() {
                 <Button 
                   onClick={handleSubmit} 
                   disabled={isSubmitting}
-                  className="gap-2 bg-blue-600 hover:bg-blue-700"
+                  className="gap-2 hover:brightness-90"
+                  style={{ backgroundColor: 'var(--color-primary)', color: 'white' }}
                 >
                   {isSubmitting ? "Submitting..." : "Submit Module"} 
                   {!isSubmitting && <ChevronRight className="h-4 w-4" />}
@@ -539,7 +542,8 @@ export default function ModuleReviewPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleConfirmSubmit}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="hover:brightness-90"
+              style={{ backgroundColor: 'var(--color-primary)', color: 'white' }}
             >
               Submit Module
             </AlertDialogAction>

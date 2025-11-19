@@ -83,9 +83,31 @@ export default function QuestionContentRenderer({ content, testNumber = 1, highl
         }
 
         if (block.type === "table") {
+          // Support legacy table formats where DB provides a single string value
+          // with `|` columns and `||` row separators (no explicit columns/rows arrays).
+          let columns: string[] | undefined = (block as any).columns
+          let rows: string[][] | undefined = (block as any).rows
+
+          if ((!columns || !rows) && (block as any).value && typeof (block as any).value === 'string') {
+            const raw = (block as any).value as string
+            // If the legacy format uses || to denote rows and | for columns, normalize to newline
+            const normalized = raw.includes('||') && !raw.includes('\n') ? raw.replace(/\|\|/g, '\n') : raw
+            const lines = normalized.split('\n').map(l => l.trim()).filter(l => l.length > 0)
+            if (lines.length > 0) {
+              columns = lines[0].split('|').map(c => c.trim())
+              rows = lines.slice(1).map(line => line.split('|').map(cell => cell.trim()))
+            } else {
+              columns = []
+              rows = []
+            }
+          }
+
+          // Defensive fallback - if columns/rows still missing, render nothing
+          if (!columns || !rows) return null
+
           return (
             <div key={key} className="my-4 overflow-x-auto">
-              <TableRenderer columns={block.columns} rows={block.rows} />
+              <TableRenderer columns={columns} rows={rows} />
             </div>
           )
         }

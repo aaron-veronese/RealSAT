@@ -19,8 +19,8 @@ export default function SATChart({ chart }: SATChartProps) {
   const { chartType, data, series, title, xLabel, yLabel } = chart;
 
   // Try to read branding colors from CSS variables, fallback to defaults
-  const readingColor = typeof window !== 'undefined' ? getComputedStyle(document.documentElement).getPropertyValue('--color-reading') || '#1E90FF' : '#1E90FF'
-  const mathColor = typeof window !== 'undefined' ? getComputedStyle(document.documentElement).getPropertyValue('--color-math') || '#FF7A18' : '#FF7A18'
+  const primaryColor = typeof window !== 'undefined' ? getComputedStyle(document.documentElement).getPropertyValue('--color-primary') || '#1E90FF' : '#1E90FF'
+  const secondaryColor = typeof window !== 'undefined' ? getComputedStyle(document.documentElement).getPropertyValue('--color-secondary') || '#FF7A18' : '#FF7A18'
   const tertiaryColor = typeof window !== 'undefined' ? getComputedStyle(document.documentElement).getPropertyValue('--color-tertiary') || '#0EA5E9' : '#0EA5E9'
   const axisColor = typeof window !== 'undefined' ? getComputedStyle(document.documentElement).getPropertyValue('--color-dark-text') || '#222' : '#222'
   const gridColor = typeof window !== 'undefined' ? getComputedStyle(document.documentElement).getPropertyValue('--color-dark-bg') || '#ccc' : '#ccc'
@@ -77,7 +77,7 @@ export default function SATChart({ chart }: SATChartProps) {
               <Bar
                 key={key}
                 dataKey={key}
-                fill={[readingColor, mathColor, tertiaryColor][idx] || tertiaryColor}
+                fill={[primaryColor, secondaryColor, tertiaryColor][idx] || tertiaryColor}
               />
             ))}
           </BarChart>

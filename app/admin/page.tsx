@@ -56,13 +56,13 @@ export default function AdminDashboardPage() {
   const getPlanBadgeColor = (plan?: string) => {
     switch (plan) {
       case 'enterprise':
-        return 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300'
+        return { className: 'text-purple-700 dark:text-purple-300', style: { backgroundColor: 'rgb(245 158 11 / 0.08)' } }
       case 'professional':
-        return 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+        return { className: 'text-[var(--color-primary)] dark:text-[var(--color-dark-text)]', style: { backgroundColor: 'var(--color-light-highlight)' } }
       case 'basic':
-        return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+        return { className: 'text-gray-700 dark:text-gray-300', style: { backgroundColor: 'rgb(243 244 246 / 1)' } }
       default:
-        return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+        return { className: 'text-gray-700 dark:text-gray-300', style: { backgroundColor: 'rgb(243 244 246 / 1)' } }
     }
   }
 
@@ -176,7 +176,7 @@ export default function AdminDashboardPage() {
                               className="w-10 h-10 rounded object-cover"
                             />
                           ) : (
-                            <div className="w-10 h-10 rounded bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                            <div className="w-10 h-10 rounded bg-gradient-to-br from-[var(--color-primary)] to-purple-600 flex items-center justify-center">
                               <Building2 className="h-5 w-5 text-white" />
                             </div>
                           )}
@@ -187,9 +187,11 @@ export default function AdminDashboardPage() {
                             </div>
                           </div>
                         </div>
-                        <Badge className={getPlanBadgeColor(school.branding?.plan)}>
-                          {school.branding?.plan?.toUpperCase() || 'BASIC'}
-                        </Badge>
+                        {(() => { const badgeStyle = getPlanBadgeColor(school.branding?.plan); return (
+                          <Badge className={badgeStyle.className} style={badgeStyle.style}>
+                            {school.branding?.plan?.toUpperCase() || 'BASIC'}
+                          </Badge>
+                        ) })()}
                       </div>
                     ))}
                   </div>
@@ -250,11 +252,11 @@ export default function AdminDashboardPage() {
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <Label className="text-sm text-muted-foreground">Primary Color</Label>
-                            <Input type="color" defaultValue={typeof window !== 'undefined' ? (getComputedStyle(document.documentElement).getPropertyValue('--color-reading').trim() || '#3b82f6') : '#3b82f6'} />
+                            <Input type="color" defaultValue={typeof window !== 'undefined' ? (getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim() || '#3b82f6') : '#3b82f6'} />
                           </div>
                           <div>
                             <Label className="text-sm text-muted-foreground">Secondary Color</Label>
-                            <Input type="color" defaultValue={typeof window !== 'undefined' ? (getComputedStyle(document.documentElement).getPropertyValue('--color-math').trim() || '#8b5cf6') : '#8b5cf6'} />
+                            <Input type="color" defaultValue={typeof window !== 'undefined' ? (getComputedStyle(document.documentElement).getPropertyValue('--color-secondary').trim() || '#8b5cf6') : '#8b5cf6'} />
                           </div>
                         </div>
                       </div>

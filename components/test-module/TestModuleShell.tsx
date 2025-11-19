@@ -63,12 +63,12 @@ export default function TestModuleShell(p: Props) {
                   <span className="header-full">{p.percentComplete}% complete</span>
                   <span className="header-short">{p.percentComplete}%</span>
                 </div>
-                <Progress value={p.percentComplete} className="h-2 bg-gray-100 dark:bg-gray-700" fillColor={p.isMathModule ? 'var(--color-math)' : 'var(--color-reading)'} />
+                <Progress value={p.percentComplete} className="h-2 bg-gray-100 dark:bg-gray-700" fillColor={p.isMathModule ? 'var(--color-secondary)' : 'var(--color-primary)'} />
               </div>
-              <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
+                <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Clock className="h-4 w-4" />
-                  <span className={`${p.timeLeft < 300 ? "text-orange-400 font-medium" : ""}`}>{p.formatClock(p.timeLeft)}</span>
+                  <span className={`${p.timeLeft < 300 ? "text-[var(--color-secondary)] font-medium" : ""}`}>{p.formatClock(p.timeLeft)}</span>
                 </div>
               </div>
               <div className="ml-auto flex items-center gap-4">
@@ -120,24 +120,24 @@ export default function TestModuleShell(p: Props) {
               {!p.isFreeResponse ? (
                 <RadioGroup value={p.currentQuestionData.userAnswer} onValueChange={p.updateAnswer}>
                   {p.options.map(opt => (
-                    <div key={opt.key} className={`flex items-center space-x-2 rounded-md border p-3 ${p.currentQuestionData.userAnswer === opt.key ? '' : 'border-gray-200'}`} onClick={() => p.updateAnswer(opt.key)} style={p.currentQuestionData.userAnswer === opt.key ? { borderColor: 'var(--color-reading)', backgroundColor: 'color-mix(in srgb, var(--color-tertiary) 8%, transparent)' } : undefined}>
+                    <div key={opt.key} className={`flex items-center space-x-2 rounded-md border p-3 ${p.currentQuestionData.userAnswer === opt.key ? '' : 'border-gray-200'}`} onClick={() => p.updateAnswer(opt.key)} style={p.currentQuestionData.userAnswer === opt.key ? { borderColor: 'var(--color-tertiary)', backgroundColor: 'var(--color-tertiary-muted)' } : undefined}>
                       {/* Keep the hidden RadioGroupItem for accessibility but replace the visible radio UI with a custom circle showing the letter */}
                       <RadioGroupItem value={opt.key} id={`option-${opt.key}`} className="sr-only" />
                             <Label htmlFor={`option-${opt.key}`} className="flex-1 cursor-pointer text-base font-normal">
                               <div className="flex items-center">
                                 <div
                                   className={`mr-3 h-8 w-8 flex items-center justify-center rounded-full border text-sm font-medium ${p.currentQuestionData.userAnswer === opt.key ? 'text-white' : 'text-muted-foreground'}`}
-                                  style={p.currentQuestionData.userAnswer === opt.key ? { backgroundColor: 'var(--color-tertiary)', borderColor: 'var(--color-reading)' } : undefined}
+                                  style={p.currentQuestionData.userAnswer === opt.key ? { backgroundColor: 'var(--color-tertiary)', borderColor: 'var(--color-tertiary)' } : undefined}
                                 >
                                   {opt.key}
                                 </div>
-                                <div className={`flex-1 ${p.crossouts && p.crossouts.includes(opt.key) ? 'line-through text-muted-foreground' : ''}`} style={p.crossouts && p.crossouts.includes(opt.key) ? { textDecorationThickness: '2px', textDecorationColor: 'var(--color-math)' } : undefined}>
+                                <div className={`flex-1 ${p.crossouts && p.crossouts.includes(opt.key) ? 'line-through text-muted-foreground' : ''}`} style={p.crossouts && p.crossouts.includes(opt.key) ? { textDecorationThickness: '2px', textDecorationColor: 'var(--color-secondary)' } : undefined}>
                                   <RenderedContent content={opt.text} testNumber={1} />
                                 </div>
                               </div>
                             </Label>
                       <div className="flex-shrink-0 ml-2 flex items-center">
-                        <button type="button" onClick={(e) => { e.stopPropagation(); p.toggleCrossout && p.toggleCrossout(opt.key) }} aria-pressed={p.crossouts ? p.crossouts.includes(opt.key) : false} className={`h-8 w-8 inline-flex items-center justify-center rounded border ${p.crossouts && p.crossouts.includes(opt.key) ? 'bg-[var(--color-math)] text-white border-[var(--color-math)]' : 'border-gray-200 dark:border-gray-600 text-muted-foreground'}`}>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); p.toggleCrossout && p.toggleCrossout(opt.key) }} aria-pressed={p.crossouts ? p.crossouts.includes(opt.key) : false} className={`h-8 w-8 inline-flex items-center justify-center rounded border ${p.crossouts && p.crossouts.includes(opt.key) ? '' : 'border-gray-200 dark:border-gray-600 text-muted-foreground'}`} style={p.crossouts && p.crossouts.includes(opt.key) ? { backgroundColor: 'var(--color-secondary)', borderColor: 'var(--color-secondary)', color: 'white' } : undefined}>
                           <XIcon className="h-4 w-4" />
                         </button>
                       </div>
@@ -196,21 +196,21 @@ export default function TestModuleShell(p: Props) {
         <div className="w-full flex justify-center">
           <div className="w-full" style={{ maxWidth: 1500 }}>
             <div className="px-8 flex h-10 items-center justify-between">
-              <Button size="sm" onClick={p.goToPreviousQuestion} disabled={p.currentQuestion === 1} className="gap-2 bg-orange-400 hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed">
+              <Button size="sm" onClick={p.goToPreviousQuestion} disabled={p.currentQuestion === 1} className="gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-90" style={{ backgroundColor: 'var(--color-secondary)', borderColor: 'var(--color-secondary)', color: 'white' }}>
                 <ChevronLeft className="h-4 w-4" /> Previous
               </Button>
               {!p.isLastQuestion && (
-                <Button size="sm" onClick={p.goToReview} className="gap-2 bg-sky-500 hover:bg-sky-600 text-white">
+                <Button size="sm" onClick={p.goToReview} className="gap-2 text-white" style={{ backgroundColor: 'var(--color-tertiary)' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-tertiary-hover)'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'var(--color-tertiary)'}>
                   <ListChecks className="h-4 w-4 mr-1" />
                   Review Module
                 </Button>
               )}
               {!p.isLastQuestion ? (
-                <Button size="sm" onClick={p.goToNextQuestion} className="gap-2 bg-blue-600 hover:bg-blue-700">
+                <Button size="sm" onClick={p.goToNextQuestion} className="gap-2 hover:brightness-90" style={{ backgroundColor: 'var(--color-primary)' }}>
                   Next <ChevronRight className="h-4 w-4" />
                 </Button>
               ) : (
-                <Button size="sm" onClick={p.goToReview} className="gap-2 bg-sky-500 hover:bg-sky-600 text-white">
+                <Button size="sm" onClick={p.goToReview} className="gap-2 hover:brightness-90 text-white" style={{ backgroundColor: 'var(--color-tertiary)' }}>
                   <ListChecks className="h-4 w-4 mr-1" />
                   Review Module
                 </Button>

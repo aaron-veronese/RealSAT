@@ -16,7 +16,7 @@ export default function LandingPage() {
         <Button className="w-full" onClick={() => router.push('/tutor')}>Tutor Dashboard</Button>
         <Button className="w-full" onClick={() => router.push('/admin')}>Admin Dashboard</Button>
         <Button className="w-full" onClick={() => router.push('/school')}>School Dashboard</Button>
-        <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white" onClick={() => router.push('/test/module/1/intro')}>Start Test</Button>
+        <Button className="w-full bg-gradient-to-r to-purple-600 text-white" style={{ backgroundImage: 'linear-gradient(90deg, var(--color-primary), var(--color-secondary))' }} onClick={() => router.push('/test/module/1/intro')}>Start Test</Button>
       </div>
     </div>
   )
