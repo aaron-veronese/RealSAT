@@ -120,14 +120,14 @@ export default function TestModuleShell(p: Props) {
               {!p.isFreeResponse ? (
                 <RadioGroup value={p.currentQuestionData.userAnswer} onValueChange={p.updateAnswer}>
                   {p.options.map(opt => (
-                    <div key={opt.key} className={`flex items-center space-x-2 rounded-md border p-3 ${p.currentQuestionData.userAnswer === opt.key ? '' : 'border-gray-200'}`} onClick={() => p.updateAnswer(opt.key)} style={p.currentQuestionData.userAnswer === opt.key ? { borderColor: 'var(--color-reading)', backgroundColor: 'var(--color-light-highlight)' } : undefined}>
+                    <div key={opt.key} className={`flex items-center space-x-2 rounded-md border p-3 ${p.currentQuestionData.userAnswer === opt.key ? '' : 'border-gray-200'}`} onClick={() => p.updateAnswer(opt.key)} style={p.currentQuestionData.userAnswer === opt.key ? { borderColor: 'var(--color-reading)', backgroundColor: 'color-mix(in srgb, var(--color-tertiary) 8%, transparent)' } : undefined}>
                       {/* Keep the hidden RadioGroupItem for accessibility but replace the visible radio UI with a custom circle showing the letter */}
                       <RadioGroupItem value={opt.key} id={`option-${opt.key}`} className="sr-only" />
                             <Label htmlFor={`option-${opt.key}`} className="flex-1 cursor-pointer text-base font-normal">
                               <div className="flex items-center">
                                 <div
                                   className={`mr-3 h-8 w-8 flex items-center justify-center rounded-full border text-sm font-medium ${p.currentQuestionData.userAnswer === opt.key ? 'text-white' : 'text-muted-foreground'}`}
-                                  style={p.currentQuestionData.userAnswer === opt.key ? { backgroundColor: 'var(--color-light-highlight)', borderColor: 'var(--color-reading)' } : undefined}
+                                  style={p.currentQuestionData.userAnswer === opt.key ? { backgroundColor: 'var(--color-tertiary)', borderColor: 'var(--color-reading)' } : undefined}
                                 >
                                   {opt.key}
                                 </div>
