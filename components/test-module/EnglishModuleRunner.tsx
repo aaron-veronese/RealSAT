@@ -109,18 +109,72 @@ export function EnglishModuleRunner({ moduleId, testId }: { moduleId: number; te
     if (!firstText) return
 
     // Create ranges from start of root to selection boundaries to compute global character offsets
-    const preRange = document.createRange()
-    preRange.setStart(firstText, 0)
-    preRange.setEnd(range.startContainer, range.startOffset)
-    // Normalize CRLF returned by range.toString() to LF so it matches our renderer normalization
-    const preStartText = preRange.toString().replace(/\r\n/g, "\n")
-    const start = preStartText.length
+    // Compute character offsets by walking the DOM and counting text nodes and <br/>s
+    // This avoids relying on the browser's range.toString() behavior which can differ
+    // across implementations and can miscount newlines when there are multiple consecutive breaks.
+    const computeNodeLengths = (node: Node, lengthMap: Map<Node, number>): number => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = (node.nodeValue || '').replace(/\r\n/g, '\n')
+        lengthMap.set(node, text.length)
+        return text.length
+      }
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const el = node as Element
+        if (el.tagName === 'BR') {
+          lengthMap.set(node, 1)
+          return 1
+        }
+        let total = 0
+        for (let i = 0; i < node.childNodes.length; i++) {
+          total += computeNodeLengths(node.childNodes[i], lengthMap)
+        }
+        lengthMap.set(node, total)
+        return total
+      }
+      lengthMap.set(node, 0)
+      return 0
+    }
 
-    const preRangeEnd = document.createRange()
-    preRangeEnd.setStart(firstText, 0)
-    preRangeEnd.setEnd(range.endContainer, range.endOffset)
-    const preEndText = preRangeEnd.toString().replace(/\r\n/g, "\n")
-    const end = preEndText.length
+    const computeNodeStarts = (node: Node, lengthMap: Map<Node, number>, startMap: Map<Node, number>, start = 0) => {
+      startMap.set(node, start)
+      if (node.nodeType === Node.TEXT_NODE) {
+        return
+      }
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const el = node as Element
+        if (el.tagName === 'BR') return
+        let cur = start
+        for (let i = 0; i < node.childNodes.length; i++) {
+          const child = node.childNodes[i]
+          computeNodeStarts(child, lengthMap, startMap, cur)
+          cur += (lengthMap.get(child) || 0)
+        }
+      }
+    }
+
+    const lengthMap = new Map<Node, number>()
+    computeNodeLengths(root, lengthMap)
+    const startMap = new Map<Node, number>()
+    computeNodeStarts(root, lengthMap, startMap, 0)
+
+    const getOffsetFromContainer = (container: Node, offsetInContainer: number): number => {
+      if (container.nodeType === Node.TEXT_NODE) {
+        const nodeLen = lengthMap.get(container) || 0
+        const off = Math.min(offsetInContainer, nodeLen)
+        return (startMap.get(container) || 0) + off
+      }
+
+      // If the container is an element, the offset is the childIndex (insert before child at offset)
+      const el = container as Element
+      if (offsetInContainer === 0) return (startMap.get(container) || 0)
+      const childIndex = offsetInContainer - 1
+      const child = container.childNodes[childIndex]
+      if (!child) return (startMap.get(container) || 0)
+      return (startMap.get(child) || 0) + (lengthMap.get(child) || 0)
+    }
+
+    const start = getOffsetFromContainer(range.startContainer, range.startOffset)
+    const end = getOffsetFromContainer(range.endContainer, range.endOffset)
 
     const text = sel.toString().trim()
     if (text.length < 2) return
