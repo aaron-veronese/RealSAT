@@ -125,7 +125,10 @@ export default function TestModuleShell(p: Props) {
                       <RadioGroupItem value={opt.key} id={`option-${opt.key}`} className="sr-only" />
                             <Label htmlFor={`option-${opt.key}`} className="flex-1 cursor-pointer text-base font-normal">
                               <div className="flex items-center">
-                                <div className={`mr-3 h-8 w-8 flex items-center justify-center rounded-full border text-sm font-medium ${p.currentQuestionData.userAnswer === opt.key ? 'bg-blue-600 text-white border-blue-600' : 'bg-transparent text-muted-foreground border-gray-200 dark:border-gray-600'}`}>
+                                <div
+                                  className={`mr-3 h-8 w-8 flex items-center justify-center rounded-full border text-sm font-medium ${p.currentQuestionData.userAnswer === opt.key ? 'text-white' : 'text-muted-foreground'}`}
+                                  style={p.currentQuestionData.userAnswer === opt.key ? { backgroundColor: p.isMathModule ? 'var(--color-math)' : 'var(--color-reading)', borderColor: p.isMathModule ? 'var(--color-math)' : 'var(--color-reading)' } : undefined}
+                                >
                                   {opt.key}
                                 </div>
                                 <div className={`flex-1 ${p.crossouts && p.crossouts.includes(opt.key) ? 'line-through text-muted-foreground' : ''}`} style={p.crossouts && p.crossouts.includes(opt.key) ? { textDecorationThickness: '2px', textDecorationColor: 'var(--color-math)' } : undefined}>
