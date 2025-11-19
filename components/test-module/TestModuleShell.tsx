@@ -137,7 +137,7 @@ export default function TestModuleShell(p: Props) {
                               </div>
                             </Label>
                       <div className="flex-shrink-0 ml-2 flex items-center">
-                        <button type="button" onClick={(e) => { e.stopPropagation(); p.toggleCrossout && p.toggleCrossout(opt.key) }} aria-pressed={p.crossouts ? p.crossouts.includes(opt.key) : false} className={`h-8 w-8 inline-flex items-center justify-center rounded border ${p.crossouts && p.crossouts.includes(opt.key) ? 'bg-[var(--color-tertiary)] text-white border-[var(--color-tertiary)]' : 'border-gray-200 dark:border-gray-600 text-muted-foreground'}`}>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); p.toggleCrossout && p.toggleCrossout(opt.key) }} aria-pressed={p.crossouts ? p.crossouts.includes(opt.key) : false} className={`h-8 w-8 inline-flex items-center justify-center rounded border ${p.crossouts && p.crossouts.includes(opt.key) ? 'bg-[var(--color-math)] text-white border-[var(--color-math)]' : 'border-gray-200 dark:border-gray-600 text-muted-foreground'}`}>
                           <XIcon className="h-4 w-4" />
                         </button>
                       </div>
