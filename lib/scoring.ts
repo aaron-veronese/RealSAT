@@ -91,24 +91,10 @@ export function calculateTestScore(modules: TestModule[]): TestScore {
 // Digital SAT Raw to Scaled Score Conversion Tables
 // Based on College Board Digital SAT scoring charts
 
-// Reading & Writing: 54 questions total (27 per module)
-const readingWritingConversionTable: Record<number, number> = {
-  54: 800, 53: 790, 52: 780, 51: 770, 50: 760, 49: 750, 48: 740, 47: 730, 46: 720, 45: 710,
-  44: 700, 43: 690, 42: 680, 41: 670, 40: 660, 39: 650, 38: 640, 37: 630, 36: 620, 35: 610,
-  34: 600, 33: 590, 32: 580, 31: 570, 30: 560, 29: 550, 28: 540, 27: 530, 26: 520, 25: 510,
-  24: 500, 23: 490, 22: 480, 21: 470, 20: 460, 19: 450, 18: 440, 17: 430, 16: 420, 15: 410,
-  14: 400, 13: 390, 12: 380, 11: 370, 10: 360, 9: 350, 8: 340, 7: 330, 6: 320, 5: 310,
-  4: 300, 3: 290, 2: 280, 1: 270, 0: 200
-}
-
-// Math: 44 questions total (22 per module)
-const mathConversionTable: Record<number, number> = {
-  44: 800, 43: 790, 42: 780, 41: 770, 40: 760, 39: 750, 38: 740, 37: 730, 36: 720, 35: 710,
-  34: 700, 33: 690, 32: 680, 31: 670, 30: 660, 29: 650, 28: 640, 27: 630, 26: 620, 25: 610,
-  24: 600, 23: 590, 22: 580, 21: 570, 20: 560, 19: 550, 18: 540, 17: 530, 16: 520, 15: 510,
-  14: 500, 13: 490, 12: 480, 11: 470, 10: 460, 9: 450, 8: 440, 7: 430, 6: 420, 5: 410,
-  4: 400, 3: 390, 2: 380, 1: 370, 0: 200
-}
+// NOTE: We removed the legacy section-level conversion tables that mapped
+// total raw scores across both modules to scaled scores. We only use
+// per-module conversion arrays below to convert a module's raw score to
+// a per-module scaled score. This preserves per-module scoring as requested.
 
 // Module-level conversion tables (per-user-provided arrays):
 const readingAndWritingModule1Conversion: number[] = [
@@ -140,31 +126,24 @@ function getModuleScaledScore(moduleNumber: number, rawScore: number, section: '
     if (moduleNumber === 1) {
       const idx = clampToRange(rawScore, readingAndWritingModule1Conversion.length - 1)
       return readingAndWritingModule1Conversion[idx] ?? readingAndWritingModule1Conversion[0]
-    } else if (moduleNumber === 2) {
-      const idx = clampToRange(rawScore, readingAndWritingModule2Conversion.length - 1)
-      return readingAndWritingModule2Conversion[idx] ?? readingAndWritingModule2Conversion[0]
     }
+    // default to module 2 mapping if moduleNumber === 2; otherwise, default to module 1 mapping
+    const idx2 = clampToRange(rawScore, readingAndWritingModule2Conversion.length - 1)
+    return (moduleNumber === 2 ? readingAndWritingModule2Conversion[idx2] : readingAndWritingModule1Conversion[idx2]) ?? readingAndWritingModule1Conversion[0]
   } else if (section === 'math') {
     if (moduleNumber === 1) {
       const idx = clampToRange(rawScore, mathModule1Conversion.length - 1)
       return mathModule1Conversion[idx] ?? mathModule1Conversion[0]
-    } else if (moduleNumber === 2) {
-      const idx = clampToRange(rawScore, mathModule2Conversion.length - 1)
-      return mathModule2Conversion[idx] ?? mathModule2Conversion[0]
     }
+    const idx2 = clampToRange(rawScore, mathModule2Conversion.length - 1)
+    return (moduleNumber === 2 ? mathModule2Conversion[idx2] : mathModule1Conversion[idx2]) ?? mathModule1Conversion[0]
   }
 
-  // Fallback: if we don't know the module, try to map section-level raw.
-  return convertRawToScaledScore(rawScore, section)
+  // This should never happen; as a last resort, return 0
+  return 0
 }
 
-function convertRawToScaledScore(rawScore: number, section: "reading" | "math"): number {
-  if (section === "reading") {
-    return readingWritingConversionTable[rawScore] || 200
-  } else {
-    return mathConversionTable[rawScore] || 200
-  }
-}
+
 
 function roundToNearestTen(score: number): number {
   return Math.round(score / 10) * 10
