@@ -121,15 +121,20 @@ export default function TestModuleShell(p: Props) {
                 <RadioGroup value={p.currentQuestionData.userAnswer} onValueChange={p.updateAnswer}>
                   {p.options.map(opt => (
                     <div key={opt.key} className={`flex items-center space-x-2 rounded-md border p-3 ${p.currentQuestionData.userAnswer === opt.key ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : 'border-gray-200'}`} onClick={() => p.updateAnswer(opt.key)}>
-                      <RadioGroupItem value={opt.key} id={`option-${opt.key}`} className="flex-shrink-0" />
-                      <Label htmlFor={`option-${opt.key}`} className="flex-1 cursor-pointer text-base font-normal">
-                        <span className="font-medium mr-2">{opt.key}.</span>
-                        <span className={`flex-1 ${p.crossouts && p.crossouts.includes(opt.key) ? 'line-through text-muted-foreground' : ''}`}>
-                          <RenderedContent content={opt.text} testNumber={1} />
-                        </span>
-                      </Label>
-                      <div className="flex-shrink-0 ml-2 h-full">
-                        <button type="button" onClick={(e) => { e.stopPropagation(); p.toggleCrossout && p.toggleCrossout(opt.key) }} aria-pressed={p.crossouts ? p.crossouts.includes(opt.key) : false} className={`h-full px-2 inline-flex items-center justify-center rounded border ${p.crossouts && p.crossouts.includes(opt.key) ? 'bg-[var(--color-tertiary)] text-white border-[var(--color-tertiary)]' : 'border-gray-200 dark:border-gray-600 text-muted-foreground'}`}>
+                      {/* Keep the hidden RadioGroupItem for accessibility but replace the visible radio UI with a custom circle showing the letter */}
+                      <RadioGroupItem value={opt.key} id={`option-${opt.key}`} className="sr-only" />
+                            <Label htmlFor={`option-${opt.key}`} className="flex-1 cursor-pointer text-base font-normal">
+                              <div className="flex items-center">
+                                <div className={`mr-3 h-8 w-8 flex items-center justify-center rounded-full border text-sm font-medium ${p.currentQuestionData.userAnswer === opt.key ? 'bg-blue-600 text-white border-blue-600' : 'bg-transparent text-muted-foreground border-gray-200 dark:border-gray-600'}`}>
+                                  {opt.key}
+                                </div>
+                                <div className={`flex-1 ${p.crossouts && p.crossouts.includes(opt.key) ? 'line-through text-muted-foreground' : ''}`} style={p.crossouts && p.crossouts.includes(opt.key) ? { textDecorationThickness: '2px', textDecorationColor: 'var(--color-math)' } : undefined}>
+                                  <RenderedContent content={opt.text} testNumber={1} />
+                                </div>
+                              </div>
+                            </Label>
+                      <div className="flex-shrink-0 ml-2 flex items-center">
+                        <button type="button" onClick={(e) => { e.stopPropagation(); p.toggleCrossout && p.toggleCrossout(opt.key) }} aria-pressed={p.crossouts ? p.crossouts.includes(opt.key) : false} className={`h-8 w-8 inline-flex items-center justify-center rounded border ${p.crossouts && p.crossouts.includes(opt.key) ? 'bg-[var(--color-tertiary)] text-white border-[var(--color-tertiary)]' : 'border-gray-200 dark:border-gray-600 text-muted-foreground'}`}>
                           <XIcon className="h-4 w-4" />
                         </button>
                       </div>
@@ -187,22 +192,22 @@ export default function TestModuleShell(p: Props) {
       <footer className="fixed bottom-0 left-0 right-0 z-20 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 w-full">
         <div className="w-full flex justify-center">
           <div className="w-full" style={{ maxWidth: 1500 }}>
-            <div className="px-8 flex h-12 items-center justify-between">
-              <Button onClick={p.goToPreviousQuestion} disabled={p.currentQuestion === 1} className="gap-2 bg-orange-400 hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed">
+            <div className="px-8 flex h-10 items-center justify-between">
+              <Button size="sm" onClick={p.goToPreviousQuestion} disabled={p.currentQuestion === 1} className="gap-2 bg-orange-400 hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed">
                 <ChevronLeft className="h-4 w-4" /> Previous
               </Button>
               {!p.isLastQuestion && (
-                <Button onClick={p.goToReview} className="gap-2 bg-sky-500 hover:bg-sky-600 text-white">
+                <Button size="sm" onClick={p.goToReview} className="gap-2 bg-sky-500 hover:bg-sky-600 text-white">
                   <ListChecks className="h-4 w-4 mr-1" />
                   Review Module
                 </Button>
               )}
               {!p.isLastQuestion ? (
-                <Button onClick={p.goToNextQuestion} className="gap-2 bg-blue-600 hover:bg-blue-700">
+                <Button size="sm" onClick={p.goToNextQuestion} className="gap-2 bg-blue-600 hover:bg-blue-700">
                   Next <ChevronRight className="h-4 w-4" />
                 </Button>
               ) : (
-                <Button onClick={p.goToReview} className="gap-2 bg-sky-500 hover:bg-sky-600 text-white">
+                <Button size="sm" onClick={p.goToReview} className="gap-2 bg-sky-500 hover:bg-sky-600 text-white">
                   <ListChecks className="h-4 w-4 mr-1" />
                   Review Module
                 </Button>
