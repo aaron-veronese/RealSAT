@@ -56,14 +56,14 @@ export default function TestModuleShell(p: Props) {
         <div className="w-full flex justify-center">
           <div className="w-full" style={{ maxWidth: 1500 }}>
             <div className="px-8 flex h-10 items-center relative">
-              <div className="flex-1 mr-4" style={{ maxWidth: 'calc(50% - 4.5rem)' }}>
+                <div className="flex-1 mr-4" style={{ maxWidth: 'calc(50% - 4.5rem)' }}>
                 <div className="flex justify-between items-center text-sm mb-1">
                   <span className="header-full">Question {p.currentQuestion} of {p.totalQuestions}</span>
                   <span className="header-short">Question {p.currentQuestion}</span>
                   <span className="header-full">{p.percentComplete}% complete</span>
                   <span className="header-short">{p.percentComplete}%</span>
                 </div>
-                <Progress value={p.percentComplete} className="h-2 bg-gray-100 dark:bg-gray-700 [&>div]:bg-blue-600" />
+                <Progress value={p.percentComplete} className="h-2 bg-gray-100 dark:bg-gray-700" fillColor={p.isMathModule ? 'var(--color-math)' : 'var(--color-reading)'} />
               </div>
               <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
                 <div className="flex items-center gap-2 text-muted-foreground">
@@ -120,14 +120,14 @@ export default function TestModuleShell(p: Props) {
               {!p.isFreeResponse ? (
                 <RadioGroup value={p.currentQuestionData.userAnswer} onValueChange={p.updateAnswer}>
                   {p.options.map(opt => (
-                    <div key={opt.key} className={`flex items-center space-x-2 rounded-md border p-3 ${p.currentQuestionData.userAnswer === opt.key ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : 'border-gray-200'}`} onClick={() => p.updateAnswer(opt.key)}>
+                    <div key={opt.key} className={`flex items-center space-x-2 rounded-md border p-3 ${p.currentQuestionData.userAnswer === opt.key ? '' : 'border-gray-200'}`} onClick={() => p.updateAnswer(opt.key)} style={p.currentQuestionData.userAnswer === opt.key ? { borderColor: 'var(--color-reading)', backgroundColor: 'var(--color-light-highlight)' } : undefined}>
                       {/* Keep the hidden RadioGroupItem for accessibility but replace the visible radio UI with a custom circle showing the letter */}
                       <RadioGroupItem value={opt.key} id={`option-${opt.key}`} className="sr-only" />
                             <Label htmlFor={`option-${opt.key}`} className="flex-1 cursor-pointer text-base font-normal">
                               <div className="flex items-center">
                                 <div
                                   className={`mr-3 h-8 w-8 flex items-center justify-center rounded-full border text-sm font-medium ${p.currentQuestionData.userAnswer === opt.key ? 'text-white' : 'text-muted-foreground'}`}
-                                  style={p.currentQuestionData.userAnswer === opt.key ? { backgroundColor: p.isMathModule ? 'var(--color-math)' : 'var(--color-reading)', borderColor: p.isMathModule ? 'var(--color-math)' : 'var(--color-reading)' } : undefined}
+                                  style={p.currentQuestionData.userAnswer === opt.key ? { backgroundColor: 'var(--color-light-highlight)', borderColor: 'var(--color-reading)' } : undefined}
                                 >
                                   {opt.key}
                                 </div>
