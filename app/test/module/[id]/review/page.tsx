@@ -403,25 +403,29 @@ export default function ModuleReviewPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="max-w-5xl mx-auto flex h-10 items-center relative px-4">
-          <h1 className="text-lg font-medium">
-            Module {moduleId}: {getModuleTitle()} - Review
-          </h1>
-          {timeLeft !== null && (
-            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 text-muted-foreground">
-              <Clock className="h-4 w-4" />
-              <span className={`${timeLeft < 300 ? "text-[var(--color-secondary)] font-medium" : ""}`}>{formatTime(timeLeft)}</span>
+      <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 w-full">
+        <div className="w-full flex justify-center">
+          <div className="w-full" style={{ maxWidth: 1920 }}>
+            <div className="px-8 flex h-12 items-center relative">
+              <h1 className="text-lg font-medium">
+                Module {moduleId} Review
+              </h1>
+              {timeLeft !== null && (
+                <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 text-muted-foreground">
+                  <Clock className="h-4 w-4" />
+                  <span className={`${timeLeft < 300 ? "text-[var(--color-secondary)] font-medium" : ""}`}>{formatTime(timeLeft)}</span>
+                </div>
+              )}
+              <div className="ml-auto flex items-center gap-4">
+                <ThemeToggle />
+              </div>
             </div>
-          )}
-          <div className="ml-auto flex items-center gap-4">
-            <ThemeToggle />
           </div>
         </div>
       </header>
 
       <main className="flex-1 py-6">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <Card className="mb-6">
           <CardContent className="p-6">
             <div className="grid gap-6">
@@ -440,7 +444,7 @@ export default function ModuleReviewPage() {
                   <div className="flex flex-col gap-2">
                     <span className="text-sm text-muted-foreground">Questions Flagged</span>
                     <div className="flex items-center gap-2">
-                      <Progress value={(flaggedCount / totalQuestions) * 100} className="h-2" fillColor={'var(--color-secondary)'} />
+                      <Progress value={(flaggedCount / totalQuestions) * 100} className="h-2" fillColor={'var(--color-quaternary)'} />
                       <span className="text-sm font-medium">
                         {flaggedCount}/{totalQuestions}
                       </span>
@@ -464,7 +468,7 @@ export default function ModuleReviewPage() {
 
               <div>
                 <h2 className="text-xl font-semibold mb-4">Question Status</h2>
-                <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-2">
+                <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-9 gap-2">
                   {questions.map((question, index) => {
                     const questionNumber = index + 1
                     const isAnswered = !!question.userAnswer
@@ -475,14 +479,8 @@ export default function ModuleReviewPage() {
                         key={question.id}
                         variant="outline"
                         size="sm"
-                        className={`relative h-10 text-gray-900 ${
-                          isFlagged
-                                ? "border-yellow-500 bg-yellow-50"
-                                : isAnswered
-                                  ? "border-[var(--color-primary)]"
-                                  : "border-[var(--color-secondary)]"
-                        }`}
-                        style={isAnswered ? { backgroundColor: 'var(--color-light-highlight)' } : undefined}
+                        className={`relative h-10 text-gray-900`}
+                        style={isFlagged ? { backgroundColor: 'color-mix(in srgb, var(--color-quaternary) 8%, transparent)', borderColor: 'var(--color-quaternary)' } : (isAnswered ? { backgroundColor: 'color-mix(in srgb, var(--color-primary) 8%, transparent)', borderColor: 'var(--color-primary)' } : { backgroundColor: 'color-mix(in srgb, var(--color-secondary) 8%, transparent)', borderColor: 'var(--color-secondary)' })}
                         onClick={() => handleGoToQuestion(questionNumber)}
                       >
                         <span>{questionNumber}</span>
@@ -505,10 +503,9 @@ export default function ModuleReviewPage() {
                 </Button>
 
                 <Button 
+                  variant="tertiary"
                   onClick={handleSubmit} 
                   disabled={isSubmitting}
-                  className="gap-2 hover:brightness-90"
-                  style={{ backgroundColor: 'var(--color-primary)', color: 'white' }}
                 >
                   {isSubmitting ? "Submitting..." : "Submit Module"} 
                   {!isSubmitting && <ChevronRight className="h-4 w-4" />}
@@ -540,13 +537,12 @@ export default function ModuleReviewPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <Button 
+              variant="tertiary"
               onClick={handleConfirmSubmit}
-              className="hover:brightness-90"
-              style={{ backgroundColor: 'var(--color-primary)', color: 'white' }}
             >
               Submit Module
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

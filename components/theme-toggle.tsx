@@ -12,7 +12,6 @@ export function ThemeToggle() {
   return (
     <Button
       variant="outline"
-      size="sm"
       onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
       className="gap-2"
     >

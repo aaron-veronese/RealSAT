@@ -40,15 +40,17 @@ export default function ModuleIntroPage() {
   }
 
   const getModuleIcon = () => {
+    const color = moduleId <= 2 ? 'var(--color-primary)' : 'var(--color-secondary)'
+    const style = { color }
     switch (moduleId) {
       case 1:
       case 2:
-        return <BookOpen className="h-6 w-6 text-primary" />
+        return <BookOpen className="h-6 w-6" style={style} />
       case 3:
       case 4:
-        return <Calculator className="h-6 w-6 text-primary" />
+        return <Calculator className="h-6 w-6" style={style} />
       default:
-        return <BookOpen className="h-6 w-6 text-primary" />
+        return <BookOpen className="h-6 w-6" style={style} />
     }
   }
 
@@ -271,21 +273,29 @@ export default function ModuleIntroPage() {
           <div className="rounded-lg border bg-card p-6">
             <h3 className="mb-4 text-lg font-medium">Module Information</h3>
             <div className="grid gap-4 md:grid-cols-3">
-              <div className="flex flex-col items-center rounded-lg border bg-background p-4 text-center">
-                <Clock className="mb-2 h-6 w-6 text-primary" />
-                <div className="text-sm font-medium">Time Allowed</div>
-                <div className="text-lg font-bold">{getModuleTime()}</div>
-              </div>
-              <div className="flex flex-col items-center rounded-lg border bg-background p-4 text-center">
-                <BookOpen className="mb-2 h-6 w-6 text-primary" />
-                <div className="text-sm font-medium">Questions</div>
-                <div className="text-lg font-bold">{getQuestionCount()}</div>
-              </div>
-              <div className="flex flex-col items-center rounded-lg border bg-background p-4 text-center">
-                <Brain className="mb-2 h-6 w-6 text-primary" />
-                <div className="text-sm font-medium">Question Format</div>
-                <div className="text-lg font-bold">{getQuestionFormat()}</div>
-              </div>
+              {(() => {
+                const iconColor = moduleId <= 2 ? 'var(--color-primary)' : 'var(--color-secondary)'
+                const iconStyle = { color: iconColor }
+                return (
+                  <>
+                    <div className="flex flex-col items-center rounded-lg border bg-background p-4 text-center">
+                      <Clock className="mb-2 h-6 w-6" style={iconStyle} />
+                      <div className="text-sm font-medium">Time Allowed</div>
+                      <div className="text-lg font-bold">{getModuleTime()}</div>
+                    </div>
+                    <div className="flex flex-col items-center rounded-lg border bg-background p-4 text-center">
+                      <BookOpen className="mb-2 h-6 w-6" style={iconStyle} />
+                      <div className="text-sm font-medium">Questions</div>
+                      <div className="text-lg font-bold">{getQuestionCount()}</div>
+                    </div>
+                    <div className="flex flex-col items-center rounded-lg border bg-background p-4 text-center">
+                      <Brain className="mb-2 h-6 w-6" style={iconStyle} />
+                      <div className="text-sm font-medium">Question Format</div>
+                      <div className="text-lg font-bold">{getQuestionFormat()}</div>
+                    </div>
+                  </>
+                )
+              })()}
             </div>
           </div>
 
@@ -308,37 +318,32 @@ export default function ModuleIntroPage() {
             </ul>
           </div>
         </CardContent>
-          <CardFooter className="flex justify-between">
+          <CardFooter className="relative flex justify-between items-center">
           <Button
-            size="lg"
-            onClick={handleReturnToDashboard}
             variant="outline"
+            onClick={handleReturnToDashboard}
             className="gap-2"
-            style={{ backgroundColor: 'var(--color-secondary)', borderColor: 'var(--color-secondary)', color: 'white' }}
-          >
+            >
             <Home className="h-4 w-4" />
             Return to Dashboard
           </Button>
           
           {/* Module 3: Show R&W Results button if modules 1 and 2 are complete */}
           {moduleId === 3 && showRWResults && (
-            <Button
-              size="lg"
-              onClick={handleViewRWResults}
-              variant="outline"
-              className="gap-2 text-white border-[var(--color-tertiary)] hover:brightness-90"
-              style={{ backgroundColor: 'var(--color-tertiary)' }}
-            >
-              Reading & Writing Results
-            </Button>
+            <div className="absolute left-1/2 -translate-x-1/2">
+              <Button
+                onClick={handleViewRWResults}
+                variant="primary"
+              >
+                Reading & Writing Results
+              </Button>
+            </div>
           )}
           
           <Button
-            size="lg"
+            variant="tertiary"
             onClick={handleBeginModule}
             disabled={isStarting}
-            className="gap-2"
-            style={{ backgroundColor: 'var(--color-primary)', borderColor: 'var(--color-primary)', color: 'white' }}
           >
             {isStarting ? "Starting..." : "Begin Module"}
             {!isStarting && <ArrowRight className="h-4 w-4" />}

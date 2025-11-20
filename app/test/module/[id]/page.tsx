@@ -9,7 +9,7 @@ function ModuleSplitLayout({ children }: { children: [React.ReactNode, React.Rea
   return (
     <div
       className="w-full min-h-screen flex justify-center items-stretch bg-background"
-      style={{ maxWidth: 1500, margin: '0 auto' }}
+      style={{ maxWidth: 1920, margin: '0 auto' }}
     >
       <div className="flex w-full h-full" style={{ minHeight: '100vh' }}>
         <div className="w-1/2 h-full flex flex-col px-0 py-0" style={{ borderRight: '1px solid var(--border-color, #e5e7eb)' }}>
@@ -34,7 +34,7 @@ export default function TestModulePage() {
   // Just render the runner, which will use TestModuleShell for layout
   if (moduleId <= 2) {
     return (
-      <div className="w-full min-h-screen flex justify-center items-stretch bg-background" style={{ maxWidth: 1500, margin: '0 auto' }}>
+      <div className="w-full min-h-screen flex justify-center items-stretch bg-background">
         <div className="flex w-full h-full" style={{ minHeight: '100vh' }}>
           <EnglishModuleRunner moduleId={moduleId} testId={testId} />
         </div>
@@ -42,7 +42,7 @@ export default function TestModulePage() {
     )
   }
   return (
-    <div className="w-full min-h-screen flex justify-center items-stretch bg-background" style={{ maxWidth: 1500, margin: '0 auto' }}>
+    <div className="w-full min-h-screen flex justify-center items-stretch bg-background">
       <div className="flex w-full h-full" style={{ minHeight: '100vh' }}>
         <MathModuleRunner moduleId={moduleId} testId={testId} />
       </div>
