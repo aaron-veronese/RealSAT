@@ -471,25 +471,38 @@ export default function ModuleReviewPage() {
                 <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-9 gap-2">
                   {questions.map((question, index) => {
                     const questionNumber = index + 1
-                    const isAnswered = !!question.userAnswer
                     const isFlagged = !!question.flagged
+                    const userAnswer = typeof question.userAnswer === 'string' ? question.userAnswer.trim() : question.userAnswer
+                    const isAnswered = !!userAnswer
+                    const isCorrect = isAnswered && question.correctAnswer != null && String(userAnswer) === String(question.correctAnswer)
+                    const isIncorrect = isAnswered && !isCorrect
+
+                    const btnStyle: React.CSSProperties = isFlagged
+                      ? { backgroundColor: 'var(--color-quaternary)', borderColor: 'var(--color-quaternary)', color: 'white' }
+                      : isCorrect
+                        ? { backgroundColor: 'var(--color-primary)', borderColor: 'var(--color-primary)', color: 'white' }
+                        : isIncorrect
+                          ? { backgroundColor: 'var(--color-secondary)', borderColor: 'var(--color-secondary)', color: 'white' }
+                          : { backgroundColor: 'var(--color-tertiary)', borderColor: 'var(--color-tertiary)', color: 'white' }
 
                     return (
                       <Button
                         key={question.id}
                         variant="outline"
                         size="sm"
-                        className={`relative h-10 text-gray-900`}
-                        style={isFlagged ? { backgroundColor: 'color-mix(in srgb, var(--color-quaternary) 8%, transparent)', borderColor: 'var(--color-quaternary)' } : (isAnswered ? { backgroundColor: 'color-mix(in srgb, var(--color-primary) 8%, transparent)', borderColor: 'var(--color-primary)' } : { backgroundColor: 'color-mix(in srgb, var(--color-secondary) 8%, transparent)', borderColor: 'var(--color-secondary)' })}
+                        className={`relative h-10`}
+                        style={btnStyle}
                         onClick={() => handleGoToQuestion(questionNumber)}
                       >
                         <span>{questionNumber}</span>
-                          {isFlagged ? (
+                        {isFlagged ? (
                           <Flag className="absolute -bottom-2 -right-2 h-4 w-4 text-yellow-500 bg-background rounded-full" />
-                        ) : isAnswered ? (
+                        ) : isCorrect ? (
                           <CheckCircle className="absolute -bottom-2 -right-2 h-4 w-4 text-[var(--color-primary)] bg-background rounded-full" />
-                        ) : (
+                        ) : isIncorrect ? (
                           <AlertCircle className="absolute -bottom-2 -right-2 h-4 w-4 text-[var(--color-secondary)] bg-background rounded-full" />
+                        ) : (
+                          <AlertCircle className="absolute -bottom-2 -right-2 h-4 w-4 text-[var(--color-tertiary)] bg-background rounded-full" />
                         )}
                       </Button>
                     )
