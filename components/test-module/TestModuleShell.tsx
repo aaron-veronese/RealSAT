@@ -145,6 +145,22 @@ export default function TestModuleShell(p: Props) {
     };
   }, []);
 
+  // Ensure parent-provided contentRef (from EnglishModuleRunner) points at the full split container
+  React.useEffect(() => {
+    try {
+      if (p.contentRef && typeof p.contentRef === 'object' && 'current' in p.contentRef) {
+        (p.contentRef as React.MutableRefObject<HTMLDivElement | null>).current = containerRef.current
+      }
+    } catch {}
+    return () => {
+      try {
+        if (p.contentRef && typeof p.contentRef === 'object' && 'current' in p.contentRef) {
+          (p.contentRef as React.MutableRefObject<HTMLDivElement | null>).current = null
+        }
+      } catch {}
+    }
+  }, [containerRef.current])
+
   return (
     <div className="min-h-screen flex flex-col w-full bg-background">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 w-full">
@@ -194,6 +210,7 @@ export default function TestModuleShell(p: Props) {
             style={{ minHeight: 'calc(100vh - 160px)', maxHeight: 'calc(100vh - 160px)', height: 'calc(100vh - 160px)' }}
             ref={containerRef}
             onMouseUp={p.onSelectionHighlight}
+            onPointerUp={p.onSelectionHighlight}
           >
             <div
               className="split-left flex flex-col px-8 border-r border-gray-700 overflow-auto"
@@ -215,7 +232,7 @@ export default function TestModuleShell(p: Props) {
                 ( (!isVertical) && p.isMathModule && p.showCalculator && p.renderDesmosInLeft && p.desmosContainerRef) ? (
                   <div className="w-full h-full" style={{ minHeight: 0, height: '100%' }} ref={p.desmosContainerRef} />
                 ) : leftContent.length > 0 ? (
-                  <div ref={p.contentRef}>
+                  <div>
                     <QuestionContentRenderer
                       content={leftContent}
                       testNumber={1}
@@ -272,7 +289,7 @@ export default function TestModuleShell(p: Props) {
               {isVertical ? (
                 <>
                   {content.length > 0 && (
-                    <div className="mb-4" ref={p.contentRef}>
+                    <div className="mb-4">
                       <QuestionContentRenderer content={content} testNumber={1} highlights={p.isEnglishModule ? p.highlights : []} baseCharIndex={0} enableFormatting={p.isEnglishModule} />
                     </div>
                   )}
@@ -314,7 +331,7 @@ export default function TestModuleShell(p: Props) {
               ) : (
                 <>
                   {rightContent.length > 0 && (
-                    <div className="mb-4" ref={p.contentRef}>
+                    <div className="mb-4">
                       <QuestionContentRenderer content={rightContent} testNumber={1} highlights={p.isEnglishModule ? p.highlights : []} baseCharIndex={leftCharCount} enableFormatting={p.isEnglishModule} />
                     </div>
                   )}
