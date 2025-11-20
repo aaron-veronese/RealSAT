@@ -215,13 +215,15 @@ export default function TestModuleShell(p: Props) {
                 ( (!isVertical) && p.isMathModule && p.showCalculator && p.renderDesmosInLeft && p.desmosContainerRef) ? (
                   <div className="w-full h-full" style={{ minHeight: 0, height: '100%' }} ref={p.desmosContainerRef} />
                 ) : leftContent.length > 0 ? (
-                  <QuestionContentRenderer
-                    content={leftContent}
-                    testNumber={1}
-                    highlights={p.isEnglishModule ? p.highlights : []}
-                    baseCharIndex={0}
-                    enableFormatting={p.isEnglishModule}
-                  />
+                  <div ref={p.contentRef}>
+                    <QuestionContentRenderer
+                      content={leftContent}
+                      testNumber={1}
+                      highlights={p.isEnglishModule ? p.highlights : []}
+                      baseCharIndex={0}
+                      enableFormatting={p.isEnglishModule}
+                    />
+                  </div>
                 ) : (
                   p.isMathModule ? <div /> : <div className="whitespace-pre-wrap text-muted-foreground">No content available for this question.</div>
                 )
@@ -270,7 +272,7 @@ export default function TestModuleShell(p: Props) {
               {isVertical ? (
                 <>
                   {content.length > 0 && (
-                    <div className="mb-4">
+                    <div className="mb-4" ref={p.contentRef}>
                       <QuestionContentRenderer content={content} testNumber={1} highlights={p.isEnglishModule ? p.highlights : []} baseCharIndex={0} enableFormatting={p.isEnglishModule} />
                     </div>
                   )}
@@ -312,7 +314,7 @@ export default function TestModuleShell(p: Props) {
               ) : (
                 <>
                   {rightContent.length > 0 && (
-                    <div className="mb-4">
+                    <div className="mb-4" ref={p.contentRef}>
                       <QuestionContentRenderer content={rightContent} testNumber={1} highlights={p.isEnglishModule ? p.highlights : []} baseCharIndex={leftCharCount} enableFormatting={p.isEnglishModule} />
                     </div>
                   )}
