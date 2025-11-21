@@ -1891,20 +1891,20 @@ export default function TestResultsPage() {
                 )}
                 {hasReading && (
                   <Button
-                    variant={selectedFilters.includes('reading') ? "outline" : "outline"}
+                    variant={selectedFilters.includes('reading') ? "primary" : "outline"}
                     size="sm"
                     onClick={() => toggleFilter('reading')}
-                    className={selectedFilters.includes('reading') ? "border-[var(--color-primary)]" : ""}
+                    //className={selectedFilters.includes('reading') ? "border-[var(--color-primary)]" : ""}
                   >
                     Reading & Writing
                   </Button>
                 )}
                 {hasMath && (
                   <Button
-                    variant={selectedFilters.includes('math') ? "outline" : "outline"}
+                    variant={selectedFilters.includes('math') ? "secondary" : "outline"}
                     size="sm"
                     onClick={() => toggleFilter('math')}
-                    className={selectedFilters.includes('math') ? "border-[var(--color-secondary)]" : ""}
+                    //className={selectedFilters.includes('math') ? "border-[var(--color-secondary)]" : ""}
                   >
                     Math
                   </Button>
@@ -1936,7 +1936,7 @@ export default function TestResultsPage() {
               {sortedGroups.map(group => (
                 <div key={`${group.moduleType}-${group.moduleNumber}`}>
                   <h3 className="text-xl font-semibold mb-4">
-                    {group.moduleType === 'reading' ? 'Reading & Writing' : 'Mathematics'} - Module {group.moduleNumber}
+                    {group.moduleType === 'reading' ? '' : ''} Module {group.moduleNumber}
                   </h3>
                   <div className="space-y-4">
                     {group.questions.map((question) => {
@@ -2059,17 +2059,13 @@ export default function TestResultsPage() {
                                         <div
                                           key={`${questionKey}-option-${optIndex}`}
                                           className={`p-3 rounded border ${
-                                            isCorrectChoice ? 'border-[var(--color-primary)] dark:border-[var(--color-dark-highlight)]' :
-                                            isUserChoice && !isCorrectChoice ? 'border-[var(--color-secondary)] dark:border-[var(--color-dark-highlight)]' : 'border-gray-200 dark:border-gray-600'
-                                          }`}
-                                          style={isCorrectChoice ? { backgroundColor: 'var(--color-light-highlight)' } : isUserChoice && !isCorrectChoice ? { backgroundColor: 'var(--color-secondary-muted)' } : undefined}
+                                                isCorrectChoice ? 'border-[var(--color-primary)] bg-[var(--color-primary-faded)]' :
+                                                isUserChoice && !isCorrectChoice ? 'border-[var(--color-secondary)] bg-[var(--color-secondary-faded)]' : 'border-gray-200 dark:border-gray-600'
+                                              }`}
                                         >
                                           <span className="font-medium">
                                             {optionLetter}.{'  '}
-                                            <span className={
-                                              isCorrectChoice ? 'text-[var(--color-primary)] dark:text-[var(--color-dark-text)]' :
-                                              isUserChoice && !isCorrectChoice ? 'text-[var(--color-secondary)] dark:text-[var(--color-dark-text)]' : 'text-gray-700 dark:text-gray-300'
-                                            }>
+                                            <span>
                                               <RenderedContent
                                                 content={option}
                                                 testNumber={1}
@@ -2077,9 +2073,9 @@ export default function TestResultsPage() {
                                               />
                                             </span>
                                           </span>
-                                          {isCorrectChoice && isUserChoice && <span className="ml-2 text-[var(--color-primary)] dark:text-[var(--color-dark-text)] text-sm">(Your Choice - Correct)</span>}
-                                          {isCorrectChoice && !isUserChoice && <span className="ml-2 text-[var(--color-primary)] dark:text-[var(--color-dark-text)] text-sm">(Correct)</span>}
-                                          {isUserChoice && !isCorrectChoice && <span className="ml-2 text-[var(--color-secondary)] dark:text-[var(--color-dark-text)] text-sm">(Your Choice - Incorrect)</span>}
+                                          {isCorrectChoice && isUserChoice && <span className="ml-2 text-[var(--color-primary)] text-sm">(Your Choice)</span>}
+                                          {isCorrectChoice && !isUserChoice && <span className="ml-2 text-[var(--color-primary)] text-sm">(Correct)</span>}
+                                          {isUserChoice && !isCorrectChoice && <span className="ml-2 text-[var(--color-secondary)] text-sm">(Your Choice)</span>}
                                         </div>
                                       )
                                     })}
@@ -2089,19 +2085,19 @@ export default function TestResultsPage() {
                                 {question.questionType === 'free-response' && (
                                   <div className="space-y-2">
                                     <div className={`p-3 rounded border ${
-                                      question.isCorrect ? 'border-[var(--color-primary)] dark:border-[var(--color-dark-highlight)]' : 'border-[var(--color-secondary)] dark:border-[var(--color-dark-highlight)]'
-                                    }`} style={question.isCorrect ? { backgroundColor: 'var(--color-light-highlight)' } : { backgroundColor: 'var(--color-secondary-muted)' }}>
+                                      question.isCorrect ? 'border-[var(--color-primary)] bg-[var(--color-primary-faded)]' : 'border-[var(--color-secondary)] bg-[var(--color-secondary-faded)]'
+                                    }`}>
                                       <div className="font-medium mb-2">Your Answer:</div>
                                       <div className={
-                                        question.isCorrect ? 'text-[var(--color-primary)] dark:text-[var(--color-dark-text)]' : 'text-[var(--color-secondary)] dark:text-[var(--color-dark-text)]'
+                                        question.isCorrect ? 'text-[var(--color-primary)]' : 'text-[var(--color-secondary)]'
                                       }>
                                         {question.userAnswer || 'No answer provided'}
                                       </div>
-                                      {question.isCorrect && <span className="ml-2 text-[var(--color-primary)] dark:text-[var(--color-dark-text)] text-sm">(Correct)</span>}
+                                      {question.isCorrect && <span className="ml-2 text-[var(--color-primary)] text-sm">(Correct)</span>}
                                     </div>
-                                    <div className="p-3 rounded border border-[var(--color-primary)] dark:border-[var(--color-dark-highlight)]" style={{ backgroundColor: 'var(--color-light-highlight)' }}>
+                                    <div className="p-3 rounded border border-[var(--color-primary)]" style={{ backgroundColor: 'var(--color-primary-faded)' }}>
                                       <div className="font-medium mb-2">Correct Answer:</div>
-                                      <div className="text-[var(--color-primary)] dark:text-[var(--color-dark-text)]">
+                                      <div className="text-[var(--color-primary)]">
                                         {question.correctAnswer}
                                       </div>
                                     </div>

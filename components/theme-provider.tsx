@@ -12,34 +12,41 @@ const DEFAULT_BRANDING = {
   secondaryColor: '#FF7A18',
   tertiaryColor: '#aa50ffff',
   quaternaryColor: '#ffd000ff',
-  lightModeBackground: '#FFFFFF',
-  lightModeText: '#0F172A',
-  darkModeBackground: '#1d0b30ff',
-  darkModeText: '#E5E7EB',
+
 }
 
-function adjustColor(hex: string, amount: number) {
-  // amount: -1 to +1 (negative = darker, positive = lighter)
-  hex = hex.replace('#', '')
-
-  const r = parseInt(hex.substring(0, 2), 16)
-  const g = parseInt(hex.substring(2, 4), 16)
-  const b = parseInt(hex.substring(4, 6), 16)
-
-  // Mix toward white (255,255,255) or black (0,0,0)
-  const mix = (channel: number) => {
-    if (amount >= 0) {
-      // lighten → mix toward white
-      return Math.round(channel + (255 - channel) * amount)
+function adjustColor(color: string, amount: number) {
+  // Blend the color with the globals.css light or dark background depending on the current theme
+  // amount: 0 = original color, 1 = all background
+  // Light: #ffffff (globals.css :root --background)
+  // Dark: #050a15 (globals.css :root.dark --background)
+  let bgColor = '#ffffff';
+  if (typeof window !== 'undefined') {
+    const root = document.documentElement;
+    if (root.classList.contains('dark')) {
+      bgColor = '#050a15';
     } else {
-      // darken → mix toward black
-      return Math.round(channel * (1 + amount)) // amount is negative
+      bgColor = '#ffffff';
     }
   }
-
-  const toHex = (n: number) => n.toString(16).padStart(2, '0')
-
-  return `#${toHex(mix(r))}${toHex(mix(g))}${toHex(mix(b))}`
+  function hexToRgb(hex: string) {
+    hex = hex.replace('#', '');
+    return [
+      parseInt(hex.substring(0, 2), 16),
+      parseInt(hex.substring(2, 4), 16),
+      parseInt(hex.substring(4, 6), 16),
+    ];
+  }
+  function rgbToHex(r: number, g: number, b: number) {
+    return `#${[r, g, b].map(x => x.toString(16).padStart(2, '0')).join('')}`;
+  }
+  const [r1, g1, b1] = hexToRgb(color);
+  const [r2, g2, b2] = hexToRgb(bgColor);
+  const t = Math.max(0, Math.min(1, amount));
+  const r = Math.round(r1 + (r2 - r1) * t);
+  const g = Math.round(g1 + (g2 - g1) * t);
+  const b = Math.round(b1 + (b2 - b1) * t);
+  return rgbToHex(r, g, b);
 }
 
 
@@ -51,36 +58,28 @@ function applyBrandingToDocument(branding: Record<string, any>) {
   root.style.setProperty('--color-secondary', b.secondaryColor)
   root.style.setProperty('--color-tertiary', b.tertiaryColor)
   root.style.setProperty('--color-quaternary', b.quaternaryColor)
-  root.style.setProperty('--color-white', b.lightModeBackground)
-  root.style.setProperty('--color-black', b.darkModeBackground)
-  root.style.setProperty('--color-primary-dark', adjustColor(b.primaryColor, -0.75))
-  root.style.setProperty('--color-secondary-dark', adjustColor(b.secondaryColor, -0.75))
-  root.style.setProperty('--color-tertiary-dark', adjustColor(b.tertiaryColor, -0.75))
-  root.style.setProperty('--color-quaternary-dark', adjustColor(b.quaternaryColor, -0.75))
-  root.style.setProperty('--color-primary-light', adjustColor(b.primaryColor, 0.75))
-  root.style.setProperty('--color-secondary-light', adjustColor(b.secondaryColor, 0.75))
-  root.style.setProperty('--color-tertiary-light', adjustColor(b.tertiaryColor, 0.75))
-  root.style.setProperty('--color-quaternary-light', adjustColor(b.quaternaryColor, 0.75))
-  root.style.setProperty('--color-light-highlight', b.primaryColor)
-  root.style.setProperty('--color-light-bg', b.lightModeBackground)
-  root.style.setProperty('--color-light-text', b.lightModeText)
-  root.style.setProperty('--color-dark-highlight', b.secondaryColor)
-  root.style.setProperty('--color-dark-bg', b.darkModeBackground)
-  root.style.setProperty('--color-dark-text', b.darkModeText)
+  root.style.setProperty('--color-primary-faded', adjustColor(b.primaryColor, 0.85))
+  root.style.setProperty('--color-secondary-faded', adjustColor(b.secondaryColor, 0.85))
+  root.style.setProperty('--color-tertiary-faded', adjustColor(b.tertiaryColor, 0.85))
+  root.style.setProperty('--color-quaternary-faded', adjustColor(b.quaternaryColor, 0.85))
+  root.style.setProperty('--color-light-highlight', adjustColor(b.primaryColor, 0.25))
+  root.style.setProperty('--color-dark-highlight', adjustColor(b.secondaryColor, 0.1))
 }
 
 export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
   React.useEffect(() => {
-    // Try to read school branding from localStorage; this lets the tutor dashboard
-    // update branding client-side when a tutor/owner changes branding.
-    try {
-      const raw = localStorage.getItem('school_branding')
-      const branding = raw ? JSON.parse(raw) : null
-      applyBrandingToDocument(branding)
-    } catch (err) {
-      // If anything fails, apply defaults
-      applyBrandingToDocument(DEFAULT_BRANDING)
+    // Apply branding initially and whenever branding in localStorage changes
+    const applyCurrentBranding = () => {
+      try {
+        const raw = localStorage.getItem('school_branding')
+        const branding = raw ? JSON.parse(raw) : null
+        applyBrandingToDocument(branding)
+      } catch {
+        applyBrandingToDocument(DEFAULT_BRANDING)
+      }
     }
+
+    applyCurrentBranding()
 
     const onStorage = (event: StorageEvent) => {
       if (event.key === 'school_branding') {
@@ -94,7 +93,23 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
     }
 
     window.addEventListener('storage', onStorage)
-    return () => window.removeEventListener('storage', onStorage)
+
+    // Watch for theme toggles (dark class added/removed on <html>) and re-apply branding
+    const root = document.documentElement
+    const mo = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        if (m.type === 'attributes' && (m as MutationRecord).attributeName === 'class') {
+          applyCurrentBranding()
+          break
+        }
+      }
+    })
+    mo.observe(root, { attributes: true, attributeFilter: ['class'] })
+
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      mo.disconnect()
+    }
   }, [])
 
   return <NextThemesProvider {...props}>{children}</NextThemesProvider>

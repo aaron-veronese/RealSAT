@@ -454,9 +454,7 @@ export default function ModuleReviewPage() {
                     <span className="text-sm text-muted-foreground">Questions Unanswered</span>
                     <div className="flex items-center gap-2">
                       <Progress
-                        value={((totalQuestions - answeredCount) / totalQuestions) * 100}
-                        className="h-2"
-                        fillColor={'var(--color-secondary)'}
+                        value={((totalQuestions - answeredCount) / totalQuestions) * 100} className="h-2" fillColor={'var(--color-secondary)'}
                       />
                       <span className="text-sm font-medium">
                         {totalQuestions - answeredCount}/{totalQuestions}
@@ -477,10 +475,8 @@ export default function ModuleReviewPage() {
                     return (
                       <Button
                         key={question.id}
-                        variant="outline"
                         size="sm"
-                        className={`relative h-10 text-gray-900`}
-                        style={isFlagged ? { backgroundColor: 'color-mix(in srgb, var(--color-quaternary) 8%, transparent)', borderColor: 'var(--color-quaternary)' } : (isAnswered ? { backgroundColor: 'color-mix(in srgb, var(--color-primary) 8%, transparent)', borderColor: 'var(--color-primary)' } : { backgroundColor: 'color-mix(in srgb, var(--color-secondary) 8%, transparent)', borderColor: 'var(--color-secondary)' })}
+                        variant={isFlagged ? "quaternaryFaded" : (isAnswered ? "primaryFaded" : "secondaryFaded")}
                         onClick={() => handleGoToQuestion(questionNumber)}
                       >
                         <span>{questionNumber}</span>

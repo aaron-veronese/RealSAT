@@ -184,7 +184,7 @@ export default function TestModuleShell(p: Props) {
               </div>
               <div className="ml-auto flex items-center gap-4">
                 {p.isEnglishModule && p.highlights.length > 0 && (
-                  <Button variant="outline" size="sm" onClick={p.onClearHighlights}>Clear</Button>
+                  <Button variant="outline" size="sm" onClick={p.onClearHighlights}>Clear Highlights</Button>
                 )}
                 {p.isMathModule && p.toggleCalculator && (
                   <Button variant={p.showCalculator ? "secondary" : "outline"} onClick={p.toggleCalculator}>
