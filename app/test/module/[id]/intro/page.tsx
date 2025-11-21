@@ -341,11 +341,11 @@ export default function ModuleIntroPage() {
           )}
           
           <Button
-            variant="tertiary"
+            variant="gradient"
             onClick={handleBeginModule}
             disabled={isStarting}
           >
-            {isStarting ? "Starting..." : "Begin Module"}
+            {isStarting ? "Starting..." : "Begin Next Module"}
             {!isStarting && <ArrowRight className="h-4 w-4" />}
           </Button>
         </CardFooter>

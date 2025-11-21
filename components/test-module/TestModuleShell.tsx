@@ -297,7 +297,7 @@ export default function TestModuleShell(p: Props) {
                   {!p.isFreeResponse ? (
                     <RadioGroup value={p.currentQuestionData.userAnswer} onValueChange={p.updateAnswer}>
                       {p.options.map(opt => (
-                        <div key={opt.key} className={`flex items-center space-x-2 rounded-md border p-3 ${p.currentQuestionData.userAnswer === opt.key ? '' : 'border-gray-200'} hover:brightness-75`} onClick={() => p.updateAnswer(opt.key)} style={p.currentQuestionData.userAnswer === opt.key ? { borderColor: 'var(--color-tertiary)', backgroundColor: 'color-mix(in srgb, var(--color-tertiary) 8%, transparent)' } : undefined}>
+                        <div key={opt.key} className={`flex items-center space-x-2 rounded-md border p-3 ${p.currentQuestionData.userAnswer === opt.key ? '' : 'border-gray-200'} hover:brightness-75`} onClick={() => p.updateAnswer(opt.key)} style={p.currentQuestionData.userAnswer === opt.key ? { borderColor: 'var(--color-tertiary)', backgroundColor: 'var(--color-tertiary-faded)' } : undefined}>
                           <RadioGroupItem value={opt.key} id={`option-${opt.key}`} className="sr-only" />
                           <Label htmlFor={`option-${opt.key}`} className="flex-1 cursor-pointer text-base font-normal">
                             <div className="flex items-center">
@@ -339,7 +339,7 @@ export default function TestModuleShell(p: Props) {
                   {!p.isFreeResponse ? (
                     <RadioGroup value={p.currentQuestionData.userAnswer} onValueChange={p.updateAnswer}>
                       {p.options.map(opt => (
-                        <div key={opt.key} className={`flex items-center space-x-2 rounded-md border p-3 ${p.currentQuestionData.userAnswer === opt.key ? '' : 'border-gray-200'} hover:brightness-75`} onClick={() => p.updateAnswer(opt.key)} style={p.currentQuestionData.userAnswer === opt.key ? { borderColor: 'var(--color-tertiary)', backgroundColor: 'color-mix(in srgb, var(--color-tertiary) 8%, transparent)' } : undefined}>
+                        <div key={opt.key} className={`flex items-center space-x-2 rounded-md border p-3 ${p.currentQuestionData.userAnswer === opt.key ? '' : 'border-gray-200'} hover:brightness-75`} onClick={() => p.updateAnswer(opt.key)} style={p.currentQuestionData.userAnswer === opt.key ? { borderColor: 'var(--color-tertiary)', backgroundColor: 'var(--color-tertiary-faded)' } : undefined}>
                           <RadioGroupItem value={opt.key} id={`option-${opt.key}`} className="sr-only" />
                           <Label htmlFor={`option-${opt.key}`} className="flex-1 cursor-pointer text-base font-normal">
                             <div className="flex items-center">
@@ -355,7 +355,7 @@ export default function TestModuleShell(p: Props) {
                             </div>
                           </Label>
                           <div className="flex-shrink-0 ml-2 flex items-center">
-                            <button type="button" onClick={(e) => { e.stopPropagation(); p.toggleCrossout && p.toggleCrossout(opt.key) }} aria-pressed={p.crossouts ? p.crossouts.includes(opt.key) : false} className={`h-8 w-8 inline-flex items-center justify-center rounded border ${p.crossouts && p.crossouts.includes(opt.key) ? '' : 'border-gray-200 dark:border-gray-600 text-muted-foreground'}`} style={p.crossouts && p.crossouts.includes(opt.key) ? { backgroundColor: 'var(--color-secondary)', borderColor: 'var(--color-secondary)', color: 'white' } : undefined}>
+                            <button type="button" onClick={(e) => { e.stopPropagation(); p.toggleCrossout && p.toggleCrossout(opt.key) }} aria-pressed={p.crossouts ? p.crossouts.includes(opt.key) : false} className={`h-8 w-8 inline-flex items-center justify-center rounded border ${p.crossouts && p.crossouts.includes(opt.key) ? '' : 'border-gray-200 dark:border-gray-600 text-muted-foreground'}`} style={p.crossouts && p.crossouts.includes(opt.key) ? { backgroundColor: 'var(--color-secondary-faded)', borderColor: 'var(--color-secondary)' } : undefined}>
                               <XIcon className="h-4 w-4" />
                             </button>
                           </div>
@@ -426,7 +426,7 @@ export default function TestModuleShell(p: Props) {
               {!p.isLastQuestion && (
                 <Button
                   onClick={p.goToReview}
-                  variant="tertiary"
+                  variant="gradient"
                   className="gap-2"
                 >
                   <ListChecks className="h-4 w-4 mr-1" />
@@ -444,7 +444,7 @@ export default function TestModuleShell(p: Props) {
               ) : (
                 <Button
                   onClick={p.goToReview}
-                  variant="tertiary"
+                  variant="gradient"
                   className="gap-2"
                 >
                   <ListChecks className="h-4 w-4 mr-1" />

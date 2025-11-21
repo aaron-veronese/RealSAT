@@ -9,15 +9,20 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        destructive:
-          'bg-destructive text-destructive-foreground hover:opacity-75',
-        outline:
-          'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
+        destructive:'bg-destructive text-destructive-foreground hover:opacity-75',
+        outline:'border-2 border-input bg-background hover:bg-accent hover:text-accent-foreground',
+        heavyOutline: 'border-2 border-[var(--color-black)] dark:border-[var(--color-white)] bg-background hover:text-accent-foreground',
         link: 'text-primary underline-offset-4 hover:underline',
         primary: 'bg-[var(--color-primary)] text-[var(--color-light-bg)] dark:text-[var(--color-dark-bg)] hover:opacity-75',
         secondary: 'bg-[var(--color-secondary)] text-[var(--color-light-bg)] dark:text-[var(--color-dark-bg)] hover:opacity-75',
         tertiary: 'bg-[var(--color-tertiary)] text-[var(--color-light-bg)] dark:text-[var(--color-dark-bg)] hover:opacity-75',
         quaternary: 'bg-[var(--color-quaternary)] text-[var(--color-light-bg)] dark:text-[var(--color-dark-bg)] hover:opacity-75',
+        white: 'bg-[var(--color-white)] text-[var(--color-dark-bg)] hover:opacity-75',
+        primaryFaded: 'border-2 border-[var(--color-primary)] bg-[var(--color-primary-faded)] hover:opacity-75',
+        secondaryFaded: 'border-2 border-[var(--color-secondary)] bg-[var(--color-secondary-faded)] hover:opacity-75',
+        tertiaryFaded: 'border-2 border-[var(--color-tertiary)] bg-[var(--color-tertiary-faded)] hover:opacity-75',
+        quaternaryFaded: 'border-2 border-[var(--color-quaternary)] bg-[var(--color-quaternary-faded)] hover:opacity-75',
+        gradient: 'bg-gradient-to-r from-[var(--color-tertiary)] to-[var(--color-secondary)] text-[var(--color-light-bg)] dark:text-[var(--color-dark-bg)] hover:opacity-75',
       },
       size: {
         default: 'h-10 px-4 py-2',

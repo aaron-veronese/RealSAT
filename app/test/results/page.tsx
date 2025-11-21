@@ -29,6 +29,7 @@ import { SignupModal } from "@/components/signup-modal"
 import { isCurrentUserTemp, getCurrentUserId } from "@/lib/auth"
 import { unlockVideo, requestVideo as requestVideoAPI, getUserVideoData, getQuestionVideos } from "@/lib/supabase/video-requests"
 import type { Test, TestModule, TestScore } from "@/lib/types"
+import test from "node:test"
 
 type StoredProgressEntry = {
   id: string
@@ -1321,18 +1322,18 @@ export default function TestResultsPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="max-w-5xl mx-auto flex h-10 items-center justify-between">
+        <div className="max-w-5xl mx-auto flex h-12 items-center justify-between">
           <div className="flex items-center gap-2 font-bold">
             <span>{headerTitle}</span>
           </div>
           <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Link href="/">
-              <Button variant="outline" size="sm" className="gap-2">
+            <Link href="/student">
+              <Button variant="outline" className="gap-2">
                 <Home className="h-4 w-4" />
                 Home
               </Button>
             </Link>
+            <ThemeToggle />
           </div>
         </div>
       </header>
@@ -1348,7 +1349,7 @@ export default function TestResultsPage() {
                 <TabsList className="w-full justify-start sm:w-auto">
                   <TabsTrigger value="score" className="px-4">Score Overview</TabsTrigger>
                   <TabsTrigger value="leaderboard" className="px-4">
-                    Leaderboard
+                    Test {testIdParam} Leaderboard
                   </TabsTrigger>
                   <TabsTrigger value="progress" className="px-4">
                     Your Progress
@@ -1390,9 +1391,8 @@ export default function TestResultsPage() {
                       </div>
                       <Button
                         onClick={() => setShowSignupModal(true)}
-                        className="bg-gradient-to-r to-purple-600 hover:brightness-90 text-white"
-                        style={{ backgroundImage: 'linear-gradient(90deg, var(--color-primary), var(--color-secondary))' }}
-                      >
+                        variant="gradient"
+                        >
                         Sign Up Free
                       </Button>
                     </div>
@@ -1855,58 +1855,56 @@ export default function TestResultsPage() {
             <div className="flex flex-wrap gap-2 mb-6 items-center justify-between">
               <div className="flex flex-wrap gap-2">
                 <Button
-                  variant={selectedFilters.includes('all') ? "default" : "outline"}
+                  variant={selectedFilters.includes('all') ? "heavyOutline" : "outline"}
                   size="sm"
                   onClick={() => toggleFilter('all')}
+
                 >
                   All
                 </Button>
                 {hasCorrect && (
                   <Button
-                    variant={selectedFilters.includes('correct') ? "default" : "outline"}
+                    variant={selectedFilters.includes('correct') ? "primaryFaded" : "outline"}
                     size="sm"
                     onClick={() => toggleFilter('correct')}
-                    className={selectedFilters.includes('correct') ? "text-[var(--color-primary)] dark:text-[var(--color-dark-text)]" : ""}
-                    style={selectedFilters.includes('correct') ? { backgroundColor: 'var(--color-light-highlight)' } : undefined}
                   >
                     Correct
                   </Button>
                 )}
                 {hasIncorrect && (
                   <Button
-                    variant={selectedFilters.includes('incorrect') ? "default" : "outline"}
+                    variant={selectedFilters.includes('incorrect') ? "secondaryFaded" : "outline"}
                     size="sm"
                     onClick={() => toggleFilter('incorrect')}
-                    className={selectedFilters.includes('incorrect') ? "text-[var(--color-secondary)] dark:text-[var(--color-dark-text)]" : ""}
-                    style={selectedFilters.includes('incorrect') ? { backgroundColor: 'var(--color-secondary-muted)' } : undefined}
                   >
                     Incorrect
                   </Button>
                 )}
                 {hasUnanswered && (
                   <Button
-                    variant={selectedFilters.includes('unanswered') ? "default" : "outline"}
+                    variant={selectedFilters.includes('unanswered') ? "quaternaryFaded" : "outline"}
                     size="sm"
                     onClick={() => toggleFilter('unanswered')}
-                    className={selectedFilters.includes('unanswered') ? "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200" : ""}
                   >
                     Unanswered
                   </Button>
                 )}
                 {hasReading && (
                   <Button
-                    variant={selectedFilters.includes('reading') ? "default" : "outline"}
+                    variant={selectedFilters.includes('reading') ? "outline" : "outline"}
                     size="sm"
                     onClick={() => toggleFilter('reading')}
+                    className={selectedFilters.includes('reading') ? "border-[var(--color-primary)]" : ""}
                   >
                     Reading & Writing
                   </Button>
                 )}
                 {hasMath && (
                   <Button
-                    variant={selectedFilters.includes('math') ? "default" : "outline"}
+                    variant={selectedFilters.includes('math') ? "outline" : "outline"}
                     size="sm"
                     onClick={() => toggleFilter('math')}
+                    className={selectedFilters.includes('math') ? "border-[var(--color-secondary)]" : ""}
                   >
                     Math
                   </Button>
@@ -1948,24 +1946,26 @@ export default function TestResultsPage() {
                       const hasContentColumns = contentColumns.length > 0
 
                       return (
-                        <Card key={questionKey} className="overflow-hidden">
+                        <Card
+                          key={questionKey}
+                          className={`overflow-hidden border`}
+                        >
                           <CardHeader
-                            className="pb-3 cursor-pointer"
+                            className="cursor-pointer"
                             onClick={() => toggleExpanded(questionKey)}
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <span
-                                  className={`px-2 py-1 rounded text-xs font-medium ${
-                                    question.isUnanswered ? 'text-gray-800 dark:text-gray-200' :
-                                    question.isCorrect ? 'text-[var(--color-primary)] dark:text-[var(--color-dark-text)]' : 'text-[var(--color-secondary)] dark:text-[var(--color-dark-text)]'
+                                  className={`px-2 py-1 rounded text-xs font-medium border w-20 flex items-center justify-center text-center ${
+                                    question.isUnanswered
+                                      ? 'border text-[var(--color-light-text)] dark:text-[var(--color-dark-text)] border-[var(--color-quaternary)] bg-[var(--color-quaternary-faded)]'
+                                      : question.isCorrect
+                                      ? 'border text-[var(--color-light-text)] dark:text-[var(--color-dark-text)] border-[var(--color-primary)] bg-[var(--color-primary-faded)]'
+                                      : 'border text-[var(--color-light-text)] dark:text-[var(--color-dark-text)] border-[var(--color-secondary)] bg-[var(--color-secondary-faded)]'
                                   }`}
-                                  style={
-                                    question.isUnanswered ? undefined : question.isCorrect ? { backgroundColor: 'var(--color-light-highlight)' } : { backgroundColor: 'var(--color-secondary-muted)' }
-                                  }
                                 >
-                                  {question.isUnanswered ? 'Unanswered' :
-                                   question.isCorrect ? 'Correct' : 'Incorrect'}
+                                  {question.isUnanswered ? 'Unanswered' : question.isCorrect ? 'Correct' : 'Incorrect'}
                                 </span>
                                 <CardTitle className="text-lg">
                                   Question {question.questionNumber}
@@ -2008,8 +2008,7 @@ export default function TestResultsPage() {
                                     </div>
                                     <Button
                                       onClick={() => setShowSignupModal(true)}
-                                      className="bg-gradient-to-r to-purple-600 hover:brightness-90 text-white"
-                                      style={{ backgroundImage: 'linear-gradient(90deg, var(--color-primary), var(--color-secondary))' }}
+                                      variant="gradient"
                                     >
                                       Sign Up Free
                                     </Button>
@@ -2064,7 +2063,6 @@ export default function TestResultsPage() {
                                             isUserChoice && !isCorrectChoice ? 'border-[var(--color-secondary)] dark:border-[var(--color-dark-highlight)]' : 'border-gray-200 dark:border-gray-600'
                                           }`}
                                           style={isCorrectChoice ? { backgroundColor: 'var(--color-light-highlight)' } : isUserChoice && !isCorrectChoice ? { backgroundColor: 'var(--color-secondary-muted)' } : undefined}
-                                        >
                                         >
                                           <span className="font-medium">
                                             {optionLetter}.{'  '}

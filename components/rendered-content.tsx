@@ -154,7 +154,7 @@ export function RenderedContent({
 }
 
 // Apply bold (**text**), italic (*text*), underline (_text_) with support for nesting
-function applyTextFormatting(text: string): (string | JSX.Element)[] {
+export function applyTextFormatting(text: string): (string | JSX.Element)[] {
   const parts: (string | JSX.Element)[] = []
   let key = 0
 
