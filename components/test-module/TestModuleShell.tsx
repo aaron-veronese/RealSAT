@@ -297,23 +297,31 @@ export default function TestModuleShell(p: Props) {
                   {!p.isFreeResponse ? (
                     <RadioGroup value={p.currentQuestionData.userAnswer} onValueChange={p.updateAnswer}>
                       {p.options.map(opt => (
-                        <div key={opt.key} className={`flex items-center space-x-2 rounded-md border p-3 ${p.currentQuestionData.userAnswer === opt.key ? '' : 'border-gray-200'} hover:brightness-75`} onClick={() => p.updateAnswer(opt.key)} style={p.currentQuestionData.userAnswer === opt.key ? { borderColor: 'var(--color-tertiary)', backgroundColor: 'var(--color-tertiary-faded)' } : undefined}>
+                        <div key={opt.key} className={`flex items-center space-x-2 rounded-md border p-3 relative ${p.crossouts && p.crossouts.includes(opt.key) ? 'crossed-out' : ''} ${p.currentQuestionData.userAnswer === opt.key ? '' : 'border-gray-200'} hover:brightness-75`} onClick={() => p.updateAnswer(opt.key)} style={p.currentQuestionData.userAnswer === opt.key ? { borderColor: 'var(--color-tertiary)', backgroundColor: 'var(--color-tertiary-faded)' } : undefined}>
                           <RadioGroupItem value={opt.key} id={`option-${opt.key}`} className="sr-only" />
                           <Label htmlFor={`option-${opt.key}`} className="flex-1 cursor-pointer text-base font-normal">
                             <div className="flex items-center">
                               <div
-                                className={`mr-3 h-8 w-8 flex items-center justify-center rounded-full border text-sm font-medium ${p.currentQuestionData.userAnswer === opt.key ? 'text-[var(--color-light-bg)] dark:text-[var(--color-dark-bg)]' : 'text-muted-foreground'}`}
+                                className={`option-circle mr-3 h-8 w-8 flex items-center justify-center rounded-full border text-sm font-medium ${p.currentQuestionData.userAnswer === opt.key ? 'text-[var(--color-light-bg)] dark:text-[var(--color-dark-bg)]' : 'text-muted-foreground'}`}
                                 style={p.currentQuestionData.userAnswer === opt.key ? { backgroundColor: 'var(--color-tertiary)', borderColor: 'var(--color-tertiary)' } : undefined}
                               >
                                 {opt.key}
+                                {p.crossouts && p.crossouts.includes(opt.key) && (
+                                  <>
+                                    <span className="x-line x-line-1" aria-hidden />
+                                    <span className="x-line x-line-2" aria-hidden />
+                                  </>
+                                )}
                               </div>
-                              <div className={`flex-1 ${p.crossouts && p.crossouts.includes(opt.key) ? 'line-through text-muted-foreground' : ''}`} style={p.crossouts && p.crossouts.includes(opt.key) ? { textDecorationThickness: '2px', textDecorationColor: 'var(--color-secondary)' } : undefined}>
-                                <RenderedContent content={opt.text} testNumber={1} />
+                              <div className={`option-text flex-1 ${p.crossouts && p.crossouts.includes(opt.key) ? 'text-muted-foreground' : ''}`}>
+                                <span className="answer-content" style={{ position: 'relative', display: 'inline-block' }}>
+                                  <RenderedContent content={opt.text} testNumber={1} />
+                                </span>
                               </div>
                             </div>
                           </Label>
                           <div className="flex-shrink-0 ml-2 flex items-center">
-                            <button type="button" onClick={(e) => { e.stopPropagation(); p.toggleCrossout && p.toggleCrossout(opt.key) }} aria-pressed={p.crossouts ? p.crossouts.includes(opt.key) : false} className={`h-8 w-8 inline-flex items-center justify-center rounded border ${p.crossouts && p.crossouts.includes(opt.key) ? '' : 'border-gray-200 dark:border-gray-600 text-muted-foreground'}`} style={p.crossouts && p.crossouts.includes(opt.key) ? { backgroundColor: 'var(--color-secondary)', borderColor: 'var(--color-secondary)', color: 'white' } : undefined}>
+                            <button type="button" onClick={(e) => { e.stopPropagation(); p.toggleCrossout && p.toggleCrossout(opt.key) }} aria-pressed={p.crossouts ? p.crossouts.includes(opt.key) : false} className={`h-8 w-8 inline-flex items-center justify-center rounded border ${p.crossouts && p.crossouts.includes(opt.key) ? '' : 'border-gray-600 text-muted-foreground'}`} style={p.crossouts && p.crossouts.includes(opt.key) ? { backgroundColor: 'var(--color-secondary)', borderColor: 'var(--color-secondary)' } : undefined}>
                               <XIcon className="h-4 w-4" />
                             </button>
                           </div>
@@ -339,18 +347,26 @@ export default function TestModuleShell(p: Props) {
                   {!p.isFreeResponse ? (
                     <RadioGroup value={p.currentQuestionData.userAnswer} onValueChange={p.updateAnswer}>
                       {p.options.map(opt => (
-                        <div key={opt.key} className={`flex items-center space-x-2 rounded-md border p-3 ${p.currentQuestionData.userAnswer === opt.key ? '' : 'border-gray-200'} hover:brightness-75`} onClick={() => p.updateAnswer(opt.key)} style={p.currentQuestionData.userAnswer === opt.key ? { borderColor: 'var(--color-tertiary)', backgroundColor: 'var(--color-tertiary-faded)' } : undefined}>
+                        <div key={opt.key} className={`flex items-center space-x-2 rounded-md border p-3 relative ${p.crossouts && p.crossouts.includes(opt.key) ? 'crossed-out' : ''} ${p.currentQuestionData.userAnswer === opt.key ? '' : 'border-gray-400'} hover:opacity-85`} onClick={() => p.updateAnswer(opt.key)} style={p.currentQuestionData.userAnswer === opt.key ? { borderColor: 'var(--color-tertiary)', backgroundColor: 'var(--color-tertiary-faded)' } : undefined}>
                           <RadioGroupItem value={opt.key} id={`option-${opt.key}`} className="sr-only" />
                           <Label htmlFor={`option-${opt.key}`} className="flex-1 cursor-pointer text-base font-normal">
                             <div className="flex items-center">
                               <div
-                                className={`mr-3 h-8 w-8 flex items-center justify-center rounded-full border text-sm font-medium ${p.currentQuestionData.userAnswer === opt.key ? 'text-[var(--color-light-bg)] dark:text-[var(--color-dark-bg)]' : 'text-muted-foreground'}`}
+                                className={`option-circle mr-3 h-8 w-8 flex items-center justify-center rounded-full border text-sm font-medium ${p.currentQuestionData.userAnswer === opt.key ? 'text-[var(--color-light-bg)] dark:text-[var(--color-dark-bg)]' : 'text-muted-foreground'}`}
                                 style={p.currentQuestionData.userAnswer === opt.key ? { backgroundColor: 'var(--color-tertiary)', borderColor: 'var(--color-tertiary)' } : undefined}
                               >
                                 {opt.key}
+                                {p.crossouts && p.crossouts.includes(opt.key) && (
+                                  <>
+                                    <span className="x-line x-line-1" aria-hidden />
+                                    <span className="x-line x-line-2" aria-hidden />
+                                  </>
+                                )}
                               </div>
-                              <div className={`flex-1 ${p.crossouts && p.crossouts.includes(opt.key) ? 'line-through text-muted-foreground' : ''}`} style={p.crossouts && p.crossouts.includes(opt.key) ? { textDecorationThickness: '2px', textDecorationColor: 'var(--color-secondary)' } : undefined}>
-                                <RenderedContent content={opt.text} testNumber={1} />
+                              <div className={`option-text flex-1 ${p.crossouts && p.crossouts.includes(opt.key) ? 'text-muted-foreground' : ''}`}>
+                                <span className="answer-content" style={{ position: 'relative', display: 'inline-block' }}>
+                                  <RenderedContent content={opt.text} testNumber={1} />
+                                </span>
                               </div>
                             </div>
                           </Label>
@@ -359,6 +375,7 @@ export default function TestModuleShell(p: Props) {
                               <XIcon className="h-4 w-4" />
                             </button>
                           </div>
+                          
                         </div>
                       ))}
                     </RadioGroup>
@@ -407,6 +424,20 @@ export default function TestModuleShell(p: Props) {
           .header-full { display: none !important; }
           .header-short { display: inline !important; }
         }
+      `}</style>
+
+      <style jsx>{`
+        /* Crossout visuals: X over the option circle only */
+        .crossed-out { position: relative; }
+
+        .option-circle { position: relative; z-index: 1; }
+        .option-circle .x-line { position: absolute; left: 50%; top: 50%; width: calc(100% + 12px); height: 2px; background: var(--color-secondary, rgba(220,38,38,0.95)); transform-origin: center; pointer-events: none; z-index: 1200; }
+        .option-circle .x-line-1 { transform: translate(-50%, -50%) rotate(45deg); }
+        .option-circle .x-line-2 { transform: translate(-50%, -50%) rotate(-45deg); }
+
+        /* Make rendered math inline content visible under the X overlay; avoid KaTeX-specific overrides */
+        .crossed-out .option-text { opacity: 0.85; }
+        .crossed-out .option-text * { text-decoration: none !important; }
       `}</style>
 
       {p.calculatorOverlay}
